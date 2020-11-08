@@ -4,15 +4,13 @@ import (
         "context"
         "flag"
         "fmt"
-        "net"
-        "os"
-
-        log "github.com/sirupsen/logrus"
         "google.golang.org/grpc"
+        "net"
+	"os"
 
         accesslog "github.com/envoyproxy/go-control-plane/envoy/service/accesslog/v2"
-
         envoy_als "envoy_accesslog_service"
+        log "github.com/sirupsen/logrus"
 )
 
 const (

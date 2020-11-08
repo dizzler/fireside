@@ -1,6 +1,7 @@
 package envoy_accesslog_service
 
 import (
+        "encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -8,41 +9,59 @@ import (
 	alf "github.com/envoyproxy/go-control-plane/envoy/data/accesslog/v2"
 	als "github.com/envoyproxy/go-control-plane/envoy/service/accesslog/v2"
 
-	slog "github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
+)
+
+const (
+        eventCategoryHttp = "proxy_http"
+        eventCategoryTcp = "proxy_tcp"
+        eventSrcGrpc = "envoy_grpc"
+        eventType    = "envoy_accesslog"
 )
 
 type logger struct{}
 
 func (logger logger) Infof(format string, args ...interface{}) {
-	slog.Infof(format, args...)
+	log.Infof(format, args...)
 }
 func (logger logger) Errorf(format string, args ...interface{}) {
-	slog.Errorf(format, args...)
+	log.Errorf(format, args...)
 }
 
 // AccessLogService buffers access logs from the remote Envoy nodes.
 type AccessLogService struct {
-	entries []string
+	entries [][]byte
 	mu      sync.Mutex
 }
 
-func (svc *AccessLogService) log(entry string) {
+func (svc *AccessLogService) log(entry []byte) {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 	svc.entries = append(svc.entries, entry)
 
-	slog.Infof("AccessLog:  " + entry)
-
+        fmt.Println(string(entry))
 }
 
 // Dump releases the collected log entries and clears the log entry list.
-func (svc *AccessLogService) Dump(f func(string)) {
+func (svc *AccessLogService) Dump(f func([]byte)) {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 	for _, entry := range svc.entries {
 		f(entry)
 	}
 	svc.entries = nil
+}
+
+// Defines the structure of Envoy access logs as JSON data
+type EnvoyAccessLogJson struct {
+        CommonProperties *alf.AccessLogCommon        `json:"common_properties"`
+        EventCategory    string                      `json:"event_category"`
+        EventSource      string                      `json:"event_source"`
+        EventType        string                      `json:"event_type"`
+        LogName          string                      `json:"log_name"`
+        LogTimestamp     string                      `json:"log_timestamp"`
+        Request          *alf.HTTPRequestProperties  `json:"request"`
+        Response         *alf.HTTPResponseProperties `json:"response"`
 }
 
 // StreamAccessLogs implements the access log service.
@@ -72,9 +91,20 @@ func (svc *AccessLogService) StreamAccessLogs(stream als.AccessLogService_Stream
 					if resp == nil {
 						resp = &alf.HTTPResponseProperties{}
 					}
-					svc.log(fmt.Sprintf("[%s%s] %s %s %s %d %s %s",
-						logName, time.Now().Format(time.RFC3339), req.Authority, req.Path, req.Scheme,
-						resp.ResponseCode.GetValue(), req.RequestId, common.UpstreamCluster))
+                                        logMsg := &EnvoyAccessLogJson{
+                                                CommonProperties: common,
+                                                EventCategory: eventCategoryHttp,
+                                                EventSource: eventSrcGrpc,
+                                                EventType: eventType,
+                                                LogName: logName,
+                                                LogTimestamp: time.Now().Format(time.RFC3339),
+                                                Request: req,
+                                                Response: resp}
+                                        logJson, err := json.Marshal(logMsg)
+					if err != nil {
+                                                log.Error(err)
+					}
+                                        svc.log(logJson)
 				}
 			}
 		case *als.StreamAccessLogsMessage_TcpLogs:
@@ -84,8 +114,22 @@ func (svc *AccessLogService) StreamAccessLogs(stream als.AccessLogService_Stream
 					if common == nil {
 						common = &alf.AccessLogCommon{}
 					}
-					svc.log(fmt.Sprintf("[%s%s] tcp %s %s",
-						logName, time.Now().Format(time.RFC3339), common.UpstreamLocalAddress, common.UpstreamCluster))
+					var req = &alf.HTTPRequestProperties{}
+					var resp = &alf.HTTPResponseProperties{}
+                                        logMsg := &EnvoyAccessLogJson{
+                                                CommonProperties: common,
+                                                EventCategory: eventCategoryTcp,
+                                                EventSource: eventSrcGrpc,
+                                                EventType: eventType,
+                                                LogName: logName,
+                                                LogTimestamp: time.Now().Format(time.RFC3339),
+                                                Request: req,
+                                                Response: resp}
+                                        logJson, err := json.Marshal(logMsg)
+					if err != nil {
+                                                log.Error(err)
+					}
+                                        svc.log(logJson)
 				}
 			}
 		}
