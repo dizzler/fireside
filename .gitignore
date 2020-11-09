@@ -1,5 +1,6 @@
 *~
 go/
+src/ratchet/
 
 *.o
 *.exe
