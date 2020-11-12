@@ -36,14 +36,13 @@ func NewEnvoyAccesslogReader(alsPort uint) *EnvoyAccesslogReader {
 // ProcessData sends whatever it receives to the outputChan
 func (r *EnvoyAccesslogReader) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	go RunAccessLogServer(r.AccessLogService, r.AlsPort, r.Ctx)
-
-        for srcEvent := range r.AccessLogService.alc {
-		outputChan <- srcEvent
-        }
 }
 
 // Finish - see interface for documentation.
 func (r *EnvoyAccesslogReader) Finish(outputChan chan data.JSON, killChan chan error) {
+        for srcEvent := range r.AccessLogService.alc {
+		outputChan <- srcEvent
+        }
 }
 
 func (r *EnvoyAccesslogReader) String() string {
