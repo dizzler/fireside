@@ -11,7 +11,6 @@ import (
         log "github.com/sirupsen/logrus"
 
         "github.com/dailyburn/ratchet"
-        //"github.com/dailyburn/ratchet/processors"
 )
 
 var (
@@ -71,17 +70,13 @@ func main() {
         // Initialize the transformation/enrichment processors for the pipeline
 	var transformerSpec string = ""
 	transformerProc := transform.NewFormatter(transformerSpec)
-	//passthroughProc := processors.NewPassthrough()
 
-	// Initialize the loading/exporting processors for the pipeline, then...
-        // Create a new pipeline using the initialized processors
-        // Send pipeline output to an S3 bucket
-	//s3WriterProc := outproc.NewS3Writer(outputConfig)
-	//pipeline := ratchet.NewPipeline(envoyAccesslogProc, passthroughProc, s3WriterProc)
+	// Initialize the loading/exporting processors for the pipeline
 	// Send pipeline output to a directory on the local filesystem
 	cacheWriterProc := outproc.NewFsCacheWriter(fsCacheDir, fsCachePrefix)
+
+        // Create a new pipeline using the initialized processors
 	pipeline := ratchet.NewPipeline(envoyAccesslogProc, transformerProc, cacheWriterProc)
-	//pipeline := ratchet.NewPipeline(envoyAccesslogProc, passthroughProc, cacheWriterProc)
 
 	// Run the data processing pipeline and wait for either an error or nil to be returned
 	err := <-pipeline.Run()
