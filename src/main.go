@@ -51,6 +51,7 @@ func main() {
         flag.Parse()
 	if debug {
 		log.SetLevel(log.DebugLevel)
+		log.Info("Debug logging enabled")
 	}
 
         // Set the various *Config values used throughout the data processing pipeline

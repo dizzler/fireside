@@ -2,6 +2,7 @@ package output_processors
 
 import (
 	"archive/tar"
+	"bufio"
 	"compress/gzip"
 	"io"
 	"io/ioutil"
@@ -23,6 +24,7 @@ const (
 
 // FsCacheWriter struct provides configuration for a new filesystem cache writer.
 type FsCacheWriter struct {
+	ActiveBuf   *bufio.Writer
 	ActiveFile  *os.File
 	ActivePath  string
 	BaseDir     string
@@ -32,11 +34,11 @@ type FsCacheWriter struct {
 // NewFsCacheWriter returns a new FsCacheWriter wrapping the given io.Writer object
 func NewFsCacheWriter(outdir string, prefix string) *FsCacheWriter {
 	// Initialize the filesystem cache
-	p, f, ferr := OpenCacheFile(outdir, prefix)
-	if ferr != nil {
-            log.WithError(ferr).Fatal("error initializing filesystem cache")
+	p, f, b, err := OpenCacheFile(outdir, prefix)
+	if err != nil {
+            log.WithError(err).Fatal("error initializing filesystem cache")
 	}
-	cacheWriter := &FsCacheWriter{ActiveFile: f, ActivePath: p, BaseDir: outdir, FilePrefix: prefix}
+	cacheWriter := &FsCacheWriter{ActiveBuf: b, ActiveFile: f, ActivePath: p, BaseDir: outdir, FilePrefix: prefix}
 	// Run and manage the filesystem cache in a separate goroutine
 	go RunFsCache(cacheWriter)
 	return cacheWriter
@@ -44,10 +46,10 @@ func NewFsCacheWriter(outdir string, prefix string) *FsCacheWriter {
 
 // ProcessData writes the data
 func (w *FsCacheWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
-	// Send the JSON data to the filesystem cache
 	var bytesWritten int = 0
+	// Send the JSON data to the filesystem cache
 	// Append the string to the output file for the current minute
-	bytesWritten, _ = w.ActiveFile.WriteString(string(d) + "\n")
+	bytesWritten, _ = w.ActiveBuf.WriteString(string(d) + "\n")
 
 	logger.Debug("FsCacheWriter:", bytesWritten, "bytes written")
 }
@@ -74,61 +76,89 @@ func NameCacheFile(baseDir string, filePrefix string, fileSuffix string) (string
 }
 
 // Create the active cache file and return its details as pointers
-func OpenCacheFile(baseDir string, filePrefix string) (string, *os.File, error) {
+func OpenCacheFile(baseDir string, filePrefix string) (string, *os.File, *bufio.Writer, error) {
 	p := NameCacheFile(baseDir, filePrefix, OutputSuffix)
 	var f *os.File
+	var b *bufio.Writer
 
 	// Create the output directory as needed
 	merr := os.MkdirAll(baseDir, 0750)
 	if merr != nil {
 		log.Error(merr)
-		return p, f, merr
+		return p, f, b, merr
 	}
 
 	// Create/open the file at path 'p' as needed
         f, err := os.OpenFile(p, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0640)
 	if err != nil {
 		log.Error(err)
-		log.WithError(err).Fatal("failed to open cache file")
+		return p, f, b, merr
 	}
-        return p, f, err
+
+	// Create/open the buffered Writer using the file we just opened
+	b = bufio.NewWriterSize(f, 4096)
+        return p, f, b, err
 }
 
 func RunFsCache(cacher *FsCacheWriter) {
+	log.Debug("running RunFsCache function")
 	// Create the output directory as needed
 	merr := os.MkdirAll(cacher.BaseDir, 0750)
 	if merr != nil {
 		log.Error(merr)
 	}
 
-	// Use a ticker to trigger rotation of the active cache file every 60 seconds
-	ticker := time.NewTicker(60 * time.Second)
+	// Use a ticker to trigger rotation of the active cache file and buffer
+	var rotateSeconds int = 10
+	rotateInterval := time.Duration(rotateSeconds)
+	rotateTicker := time.NewTicker(rotateInterval * time.Second)
+	// Use another ticker to trigger cache cleanup
+	var cleanSeconds int = 60
+	cleanInterval := time.Duration(cleanSeconds)
+	cleanTicker := time.NewTicker(cleanInterval * time.Second)
+	// Use a common 'quit' channel to stop both tickers as needed
 	quit := make(chan struct{})
 	go func() {
 		for {
 			select {
-			case <- ticker.C:
-				oldCacheFile := cacher.ActiveFile
-				cachePath, cacheFile, err := OpenCacheFile(cacher.BaseDir, cacher.FilePrefix)
-				if err != nil {
-					log.Error(err)
-				} else if cacher.ActivePath != cachePath {
-					cacher.ActivePath = cachePath
-					cacher.ActiveFile = cacheFile
-					// Run a goroutine to close the old file and cleanup the cache files
-					go CleanFsCache(cacher, oldCacheFile)
-				}
+			case <- rotateTicker.C:
+				go RotateFsCache(cacher)
+			case <- cleanTicker.C:
+				go CleanFsCache(cacher)
 			case <- quit:
-				ticker.Stop()
+				rotateTicker.Stop()
+				cleanTicker.Stop()
 				return
 		        }
 		}
 	}()
 }
 
-func CleanFsCache(cacher *FsCacheWriter, oldFile *os.File) {
-	// Close the old cache file
-	oldFile.Close()
+func RotateFsCache(cacher *FsCacheWriter) {
+	log.Debug("running RotateFsCache function")
+	oldBuf := cacher.ActiveBuf
+	oldCacheFile := cacher.ActiveFile
+	cachePath, cacheFile, cacheBuf, err := OpenCacheFile(cacher.BaseDir, cacher.FilePrefix)
+	if err != nil { log.Error(err) }
+
+	// Rotate old and new cache pointers if paths do not match
+	if cacher.ActivePath != cachePath {
+		cacher.ActiveBuf  = cacheBuf
+		cacher.ActivePath = cachePath
+		cacher.ActiveFile = cacheFile
+
+		// Flush the old IO buffer
+		err := oldBuf.Flush()
+		if err != nil { log.Error(err) }
+
+		// Close the old cache file
+		err = oldCacheFile.Close()
+		if err != nil { log.Error(err) }
+	}
+}
+
+func CleanFsCache(cacher *FsCacheWriter) {
+	log.Debug("running CleanFsCache function")
 	// Clean the filesystem cache by removing empty and/or old files
 	files, err := ioutil.ReadDir(cacher.BaseDir)
 	if err != nil {
@@ -138,29 +168,30 @@ func CleanFsCache(cacher *FsCacheWriter, oldFile *os.File) {
 		filePath := path.Join([]string{cacher.BaseDir, file.Name()}...)
 		// Avoid archiving data which is either (1) active OR (2) already archived
 		if filePath != cacher.ActivePath && strings.HasSuffix(filePath, OutputSuffix) {
-			log.Info("checking cache file for archive and/or cleanup : " + filePath)
+			log.Debug("checking cache file for archive and/or cleanup : " + filePath)
 			fileInfo, ferr := os.Stat(filePath)
 			if ferr != nil {
 				log.Error(ferr)
 			}
 			switch mode := fileInfo.Mode(); {
 			case mode.IsDir():
-				log.Info("skipping removal of directory : " + filePath)
+				log.Debug("skipping removal of directory : " + filePath)
 			case mode.IsRegular():
 				if fileInfo.Size() == 0 {
-					log.Info("removing empty cache file : " + filePath)
+					log.Debug("removing empty cache file : " + filePath)
 					rerr := os.RemoveAll(filePath)
 					if rerr != nil {
 						log.Error(rerr)
 					}
 				} else {
-					log.Info("archiving cache file : " + filePath)
 					a_err := ArchiveCacheFile(cacher, filePath, fileInfo)
 					if a_err != nil {
 						log.Error(a_err)
 					}
 				}
 			}
+		} else {
+			log.Debug("skipping archive/cleanup task for file : " + filePath)
 		}
 	}
 }
@@ -171,6 +202,8 @@ func ArchiveCacheFile(cacher *FsCacheWriter, filepath string, fileinfo os.FileIn
 	acf, err := os.OpenFile(acf_name, os.O_RDWR|os.O_CREATE, 0640)
 	defer acf.Close()
 	if err != nil { return err }
+
+	log.Debug("archiving cache data from :" + filepath +": to path :" + acf_name)
 
 	// Create new Writers for gzip and tar. These writers are chained such that
 	// writing to the tar writer will write to the gzip writer, which will write
