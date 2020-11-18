@@ -289,19 +289,14 @@ func DeleteArchives(cacher *FsCacheWriter, filePaths []string) error {
 		if err := os.RemoveAll(file); err != nil {
 			return err
 		}
-		af_list := cacher.ArchivePaths
-		for i, af := range af_list {
-			// remove file from list of ArchivePaths to avoid duplication of work
-			if file == af {
-				RemoveIndex(cacher.ArchivePaths, i)
+		newitems := []string{}
+		for _, af := range cacher.ArchivePaths {
+			// remove uploaded file(s) from list of ArchivePaths
+			if file != af {
+				newitems = append(newitems, af)
 			}
 		}
+		cacher.ArchivePaths = newitems
 	}
 	return nil
-}
-
-func RemoveIndex(s []string, index int) []string {
-        ret := make([]string, 0)
-        ret = append(ret, s[:index]...)
-        return append(ret, s[index+1:]...)
 }
