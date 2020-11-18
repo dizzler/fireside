@@ -13,6 +13,9 @@ import (
 
         log "github.com/sirupsen/logrus"
 
+        "github.com/aws/aws-sdk-go/aws"
+        "github.com/aws/aws-sdk-go/aws/session"
+        "github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/dailyburn/ratchet/data"
 	"github.com/dailyburn/ratchet/logger"
 )
@@ -24,11 +27,12 @@ const (
 
 // FsCacheWriter struct provides configuration for a new filesystem cache writer.
 type FsCacheWriter struct {
-	ActiveBuf   *bufio.Writer
-	ActiveFile  *os.File
-	ActivePath  string
-	BaseDir     string
-	FilePrefix  string
+	ActiveBuf    *bufio.Writer
+	ActiveFile   *os.File
+	ActivePath   string
+	ArchivePaths []string
+	BaseDir      string
+	FilePrefix   string
 }
 
 // NewFsCacheWriter returns a new FsCacheWriter wrapping the given io.Writer object
@@ -38,7 +42,8 @@ func NewFsCacheWriter(outdir string, prefix string) *FsCacheWriter {
 	if err != nil {
             log.WithError(err).Fatal("error initializing filesystem cache")
 	}
-	cacheWriter := &FsCacheWriter{ActiveBuf: b, ActiveFile: f, ActivePath: p, BaseDir: outdir, FilePrefix: prefix}
+	var paths []string
+	cacheWriter := &FsCacheWriter{ActiveBuf: b, ActiveFile: f, ActivePath: p, ArchivePaths: paths, BaseDir: outdir, FilePrefix: prefix}
 	// Run and manage the filesystem cache in a separate goroutine
 	go RunFsCache(cacheWriter)
 	return cacheWriter
@@ -116,6 +121,10 @@ func RunFsCache(cacher *FsCacheWriter) {
 	var cleanSeconds int = 60
 	cleanInterval := time.Duration(cleanSeconds)
 	cleanTicker := time.NewTicker(cleanInterval * time.Second)
+	// Use another ticker to trigger archive upload
+	var archiverSeconds int = 5
+	archiverInterval := time.Duration(archiverSeconds)
+	archiverTicker := time.NewTicker(archiverInterval * time.Second)
 	// Use a common 'quit' channel to stop both tickers as needed
 	quit := make(chan struct{})
 	go func() {
@@ -125,6 +134,10 @@ func RunFsCache(cacher *FsCacheWriter) {
 				go RotateFsCache(cacher)
 			case <- cleanTicker.C:
 				go CleanFsCache(cacher)
+			case <- archiverTicker.C:
+				if err := UploadArchives(cacher); err != nil {
+					log.Error(err)
+				}
 			case <- quit:
 				rotateTicker.Stop()
 				cleanTicker.Stop()
@@ -197,6 +210,7 @@ func CleanFsCache(cacher *FsCacheWriter) {
 }
 
 func ArchiveCacheFile(cacher *FsCacheWriter, filepath string, fileinfo os.FileInfo) error {
+	log.Debug("running ArchiveCacheFile function")
 	// Generate the filepath for the archive file, based on the current time.Now()
 	acf_name := NameCacheFile(cacher.BaseDir, cacher.FilePrefix, ArchiveSuffix)
 	acf, err := os.OpenFile(acf_name, os.O_RDWR|os.O_CREATE, 0640)
@@ -231,10 +245,56 @@ func ArchiveCacheFile(cacher *FsCacheWriter, filepath string, fileinfo os.FileIn
 	_, err = io.Copy(tw, src)
 	if err != nil { return err }
 
+	// Append the archive to the list of cacher ArchivePaths
+	cacher.ArchivePaths = append(cacher.ArchivePaths, acf_name)
+
 	// Delete old file after adding its contents to archive
 	log.Info("removing cache file after adding to archive : " + filepath)
 	err = os.RemoveAll(filepath)
 	if err != nil { return err }
 
+	return nil
+}
+
+func UploadArchives(cacher *FsCacheWriter) error {
+	log.Debug("running UploadArchives function")
+	const bucket string = "fe-cv-deploy-logs-us-east-2"
+	var region string = "us-east-2"
+	archivePaths := cacher.ArchivePaths
+	if len(archivePaths) == 0 {
+		log.Debug("empty list of archives to upload ; skipping...")
+		return nil
+	}
+	iter := NewS3UploadIterator(bucket, cacher.ArchivePaths)
+	uploader := s3manager.NewUploader(session.New(&aws.Config{
+		Region: &region,
+	}))
+
+	// Upload the list of archive files
+	if err := uploader.UploadWithIterator(aws.BackgroundContext(), iter); err != nil {
+		return err
+	}
+
+	// Delete the archive files and remove from archive list after successful upload
+	if delete_err := DeleteArchives(cacher, archivePaths); delete_err != nil {
+		return delete_err
+	}
+
+	return nil
+}
+
+func DeleteArchives(cacher *FsCacheWriter, filePaths []string) error {
+	for _, file := range filePaths {
+		log.Debug("removing archive file : " + file)
+		if err := os.RemoveAll(file); err != nil {
+			return err
+		}
+		for i, af := range cacher.ArchivePaths {
+			// remove file from list of ArchivePaths to avoid duplication of work
+			if file == af {
+				cacher.ArchivePaths = append(cacher.ArchivePaths[:i], cacher.ArchivePaths[i+1:]...)
+			}
+		}
+	}
 	return nil
 }
