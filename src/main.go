@@ -2,7 +2,6 @@ package main
 
 import (
         "flag"
-        "os"
 
         eal "envoy_accesslog"
 	outproc "output_processors"
@@ -84,8 +83,4 @@ func main() {
 	if err != nil {
                 log.WithError(err).Fatal("error in data processing pipeline")
 	}
-
-	cc := make(chan struct{})
-	<-cc
-	os.Exit(0)
 }
