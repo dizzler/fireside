@@ -28,12 +28,6 @@ var (
         outputConfig    *outproc.OutputConfig
 )
 
-func check(e error) {
-       if e != nil {
-	   panic(e)
-       }
-}
-
 func init() {
         flag.UintVar(&alsPort, "alsPort", 5446, "Listen port for Access Log Server")
         flag.BoolVar(&debug, "debug", false, "Use debug logging")
@@ -73,7 +67,7 @@ func main() {
 
 	// Initialize the loading/exporting processors for the pipeline
 	// Send pipeline output to a directory on the local filesystem
-	cacheWriterProc := outproc.NewFsCacheWriter(fsCacheDir, fsCachePrefix)
+	cacheWriterProc := outproc.NewFsCacheWriter(fsCacheDir, fsCachePrefix, outputConfig)
 
         // Create a new pipeline using the initialized processors
 	pipeline := ratchet.NewPipeline(envoyAccesslogProc, transformerProc, cacheWriterProc)

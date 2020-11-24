@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"bufio"
 	"compress/gzip"
+	"fmt"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -33,17 +35,18 @@ type FsCacheWriter struct {
 	ArchivePaths []string
 	BaseDir      string
 	FilePrefix   string
+	OutputConfig *OutputConfig
 }
 
 // NewFsCacheWriter returns a new FsCacheWriter wrapping the given io.Writer object
-func NewFsCacheWriter(outdir string, prefix string) *FsCacheWriter {
+func NewFsCacheWriter(outdir string, prefix string, outconf *OutputConfig) *FsCacheWriter {
 	// Initialize the filesystem cache
 	p, f, b, err := OpenCacheFile(outdir, prefix)
 	if err != nil {
             log.WithError(err).Fatal("error initializing filesystem cache")
 	}
 	var paths []string
-	cacheWriter := &FsCacheWriter{ActiveBuf: b, ActiveFile: f, ActivePath: p, ArchivePaths: paths, BaseDir: outdir, FilePrefix: prefix}
+	cacheWriter := &FsCacheWriter{ActiveBuf: b, ActiveFile: f, ActivePath: p, ArchivePaths: paths, BaseDir: outdir, FilePrefix: prefix, OutputConfig: outconf}
 	// Run and manage the filesystem cache in a separate goroutine
 	go RunFsCache(cacheWriter)
 	return cacheWriter
@@ -258,27 +261,44 @@ func ArchiveCacheFile(cacher *FsCacheWriter, filepath string, fileinfo os.FileIn
 
 func UploadArchives(cacher *FsCacheWriter) error {
 	log.Debug("running UploadArchives function")
-	const bucket string = "fe-cv-deploy-logs-us-east-2"
-	var region string = "us-east-2"
-	archivePaths := cacher.ArchivePaths
-	if len(archivePaths) == 0 {
-		log.Debug("empty list of archives to upload ; skipping...")
-		return nil
-	}
-	iter := NewS3UploadIterator(bucket, cacher.ArchivePaths)
-	uploader := s3manager.NewUploader(session.New(&aws.Config{
-		Region: &region,
-	}))
+        var (
+                bucket string
+                region string
+        )
+	//const bucket string = "fe-cv-deploy-logs-us-east-2"
+	//var region string = "us-east-2"
+        if len(cacher.OutputConfig.AWS.S3Bucket) > 0 {
+                bucket = cacher.OutputConfig.AWS.S3Bucket
 
-	// Upload the list of archive files
-	if err := uploader.UploadWithIterator(aws.BackgroundContext(), iter); err != nil {
-		return err
-	}
+                if region = cacher.OutputConfig.AWS.Region ; len(region) == 0 {
+                        return errors.New("cannot upload logs ; region is undefined for bucket " + bucket)
+                }
+		log.Debug("Configured to upload archives to AWS region " + region)
 
-	// Delete the archive files and remove from archive list after successful upload
-	if delete_err := DeleteArchives(cacher, archivePaths); delete_err != nil {
-		return delete_err
-	}
+                archivePaths := cacher.ArchivePaths
+                if len(archivePaths) == 0 {
+                        log.Debug("empty list of archives to upload ; skipping...")
+                        return nil
+                }
+                iter := NewS3UploadIterator(bucket, cacher.ArchivePaths)
+                uploader := s3manager.NewUploader(session.New(&aws.Config{
+                        Region: &region,
+                }))
+		log.Info(fmt.Printf("Uploading archive files to AWS Region %s : S3 Bucket %s", bucket, region))
+
+                // Upload the list of archive files
+                if err := uploader.UploadWithIterator(aws.BackgroundContext(), iter); err != nil {
+                        return err
+                }
+
+                // Delete the archive files and remove from archive list after successful upload
+                if delete_err := DeleteArchives(cacher, archivePaths); delete_err != nil {
+                        return delete_err
+                }
+
+        } else {
+	        return errors.New("cannot upload logs ; target S3 bucket is not set")
+        }
 
 	return nil
 }
