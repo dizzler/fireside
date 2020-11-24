@@ -265,8 +265,6 @@ func UploadArchives(cacher *FsCacheWriter) error {
                 bucket string
                 region string
         )
-	//const bucket string = "fe-cv-deploy-logs-us-east-2"
-	//var region string = "us-east-2"
         if len(cacher.OutputConfig.AWS.S3Bucket) > 0 {
                 bucket = cacher.OutputConfig.AWS.S3Bucket
 

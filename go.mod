@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	envoy_accesslog v0.0.0
+	github.com/creasty/defaults v1.5.1 // indirect
 	github.com/dailyburn/bigquery v0.0.0-20171116202005-b6f18972580e // indirect
 	github.com/dailyburn/ratchet v0.0.0
 	github.com/dailyburn/ratchet/util v0.0.0

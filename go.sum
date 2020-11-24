@@ -46,6 +46,8 @@ github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMn
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f h1:WBZRG4aNOuI15bLRrCgN8fCq8E5Xuty6jGbmSNEvSsU=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
+github.com/creasty/defaults v1.5.1 h1:j8WexcS3d/t4ZmllX4GEkl4wIB/trOr035ajcLHCISM=
+github.com/creasty/defaults v1.5.1/go.mod h1:FPZ+Y0WNrbqOVw+c6av63eyHUAl6pMHZwqLPvXUZGfY=
 github.com/dailyburn/bigquery v0.0.0-20171116202005-b6f18972580e h1:XRteWdR5ZaQIO1XAttM5+3z+ZmJJue9efXGm1/BOC/s=
 github.com/dailyburn/bigquery v0.0.0-20171116202005-b6f18972580e/go.mod h1:vzZhYuKQ9uFxIf3V3J9Ue/bO8RssREpxNuNSAb8Yh1E=
 github.com/dailyburn/ratchet v1.5.1 h1:JsCpOh5U3IYyANiVngRhqE6vK5GLl0SunKoL4p0PVPY=
@@ -416,6 +418,7 @@ gopkg.in/errgo.v2 v2.1.0/go.mod h1:hNsd1EY+bozCKY1Ytp96fpM3vjJbqLJn88ws8XvfDNI=
 gopkg.in/qntfy/kazaam.v3 v3.4.8 h1:XN2+VWTnNlb4qIbk1FLG5MJn4mfcnHCHA0NYluv/uDg=
 gopkg.in/qntfy/kazaam.v3 v3.4.8/go.mod h1:Wd/NtL7lla1KLeVKvET8CWojg+DmX0tDUC6J+ut61Z0=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
+gopkg.in/yaml.v2 v2.2.8 h1:obN1ZagJSUGI0Ek/LBmuj4SNLPfIny3KsKFopxRdj10=
 gopkg.in/yaml.v2 v2.2.8/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
