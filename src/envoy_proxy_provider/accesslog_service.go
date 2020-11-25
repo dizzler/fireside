@@ -2,8 +2,6 @@ package envoy_proxy_provider
 
 import (
         "encoding/json"
-	"fmt"
-	"sync"
 	"time"
 
 	alf "github.com/envoyproxy/go-control-plane/envoy/data/accesslog/v2"
@@ -30,9 +28,7 @@ func (logger logger) Errorf(format string, args ...interface{}) {
 
 // AccessLogService buffers access logs from the remote Envoy nodes.
 type AccessLogService struct {
-	entries  []data.JSON
-	mu       sync.Mutex
-	alc      chan data.JSON
+	alc chan data.JSON
 }
 
 // Defines the structure of Envoy access logs as JSON data
@@ -45,28 +41,6 @@ type EnvoyAccessLogJson struct {
         LogTimestamp     string                      `json:"log_timestamp"`
         Request          *alf.HTTPRequestProperties  `json:"request"`
         Response         *alf.HTTPResponseProperties `json:"response"`
-}
-
-func (svc *AccessLogService) log(entry data.JSON) {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-	svc.entries = append(svc.entries, entry)
-
-	// write each accesslog entry to a channel
-	svc.alc <- entry
-
-	// Log each JSON message to stdout when debug logging is enabled
-        log.Debug(fmt.Println(string(entry)))
-}
-
-// Dump releases the collected log entries and clears the log entry list.
-func (svc *AccessLogService) Dump(f func(data.JSON)) {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-	for _, entry := range svc.entries {
-		f(entry)
-	}
-	svc.entries = nil
 }
 
 // StreamAccessLogs implements the access log service.
@@ -110,7 +84,7 @@ func (svc *AccessLogService) StreamAccessLogs(stream als.AccessLogService_Stream
 					if err != nil {
                                                 log.Error(err)
 					}
-                                        svc.log(logJson)
+                                        svc.alc <- logJson
 				}
 			}
 		case *als.StreamAccessLogsMessage_TcpLogs:
@@ -135,7 +109,7 @@ func (svc *AccessLogService) StreamAccessLogs(stream als.AccessLogService_Stream
 					if err != nil {
                                                 log.Error(err)
 					}
-                                        svc.log(logJson)
+                                        svc.alc <- logJson
 				}
 			}
 		}
