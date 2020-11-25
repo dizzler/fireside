@@ -2,6 +2,7 @@ package envoy_proxy_provider
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	//"io/ioutil"
@@ -177,5 +178,10 @@ func ServeEnvoyXds(port uint) {
 		} else {
 			log.Error("Failed to get Envoy node info and/or ID")
 		}
+		nodeJson, err := json.Marshal(node)
+		if err != nil {
+			log.Error(err)
+		}
+		log.Debug(fmt.Println(string(nodeJson)))
 	}
 }
