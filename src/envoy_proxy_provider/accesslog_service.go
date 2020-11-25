@@ -1,4 +1,4 @@
-package envoy_accesslog
+package envoy_proxy_provider
 
 import (
         "encoding/json"
@@ -16,7 +16,7 @@ const (
         eventCategoryHttp = "proxy_http"
         eventCategoryTcp = "proxy_tcp"
         eventSrcGrpc = "envoy_grpc"
-        eventType    = "envoy_accesslog"
+        eventType    = "envoy_proxy_provider"
 )
 
 type logger struct{}

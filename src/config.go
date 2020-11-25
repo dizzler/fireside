@@ -20,11 +20,19 @@ type Config struct {
     Inputs struct {
 	Envoy struct {
 	    Accesslog struct {
+		// configs for the Envoy Accesslog (collector) server
 		Server struct {
 		    Host string `yaml:"host"`
 		    Port uint   `yaml:"port"`
 		} `yaml:"server"`
 	    } `yaml:"accesslog"`
+	    Xds struct {
+		// configs for the Envoy xDS (control plane) server
+		Server struct {
+		    Host string `yaml:"host"`
+		    Port uint   `yaml:"port"`
+		} `yaml:"server"`
+	    } `yaml:"xds"`
 	} `yaml:"envoy"`
     } `yaml:"inputs"`
 

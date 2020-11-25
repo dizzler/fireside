@@ -3,12 +3,12 @@ module main
 go 1.14
 
 require (
-	envoy_accesslog v0.0.0
+	envoy_proxy_provider v0.0.0
 	github.com/creasty/defaults v1.5.1 // indirect
 	github.com/dailyburn/bigquery v0.0.0-20171116202005-b6f18972580e // indirect
 	github.com/dailyburn/ratchet v0.0.0
 	github.com/dailyburn/ratchet/util v0.0.0
-	github.com/envoyproxy/go-control-plane v0.9.4
+	github.com/envoyproxy/go-control-plane v0.9.7
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/jlaffaye/ftp v0.0.0-20201021201046-0de5c29d4555 // indirect
@@ -24,7 +24,7 @@ require (
 	transformers v0.0.0
 )
 
-replace envoy_accesslog => ./src/envoy_accesslog
+replace envoy_proxy_provider => ./src/envoy_proxy_provider
 
 replace github.com/dailyburn/ratchet => ./src/ratchet
 

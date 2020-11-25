@@ -1,4 +1,4 @@
-package envoy_accesslog
+package envoy_proxy_provider
 
 import (
 	"context"

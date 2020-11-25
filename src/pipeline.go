@@ -1,7 +1,7 @@
 package main
 
 import (
-        eal "envoy_accesslog"
+        epp "envoy_proxy_provider"
 	outproc "output_processors"
 	transform "transformers"
 
@@ -29,7 +29,7 @@ func CreateEventPipeline(config *Config) {
                 CheckCert: awsCheckCerts}
 
 	// Initialize the data extraction/input processors for pipeline
-        envoyAccesslogProc := eal.NewEnvoyAccesslogReader(config.Inputs.Envoy.Accesslog.Server.Port)
+        envoyAccesslogProc := epp.NewEnvoyAccesslogReader(config.Inputs.Envoy.Accesslog.Server.Port)
 
         // Initialize the transformation/enrichment processors for the pipeline
 	var transformerSpec string = ""

@@ -1,7 +1,9 @@
 package main
 
 import (
+        epp "envoy_proxy_provider"
         log "github.com/sirupsen/logrus"
+	"os"
 )
 
 func main() {
@@ -18,5 +20,11 @@ func main() {
 		log.Info("Debug logging enabled")
 	}
 
-	CreateEventPipeline(config)
+	go CreateEventPipeline(config)
+
+	go epp.ServeEnvoyXds(config.Inputs.Envoy.Xds.Server.Port)
+
+	cc := make(chan struct{})
+	<-cc
+	os.Exit(0)
 }
