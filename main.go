@@ -1,11 +1,11 @@
 package main
 
 import (
-	configure "fireside/configure"
-        envoy "fireside/envoy_proxy_provider"
+	configure "fireside/pkg/configure"
+        envoy "fireside/pkg/envoy"
         log "github.com/sirupsen/logrus"
 	"os"
-	pipeline "fireside/pipeline"
+	pipeline "fireside/pkg/pipeline"
 )
 
 func main() {
@@ -24,7 +24,7 @@ func main() {
 
 	go pipeline.CreateEventPipeline(config)
 
-	go envoy.ServeEnvoyXds(config.Inputs.Envoy.Xds.Server.Port)
+	go envoy.ServeEnvoyXds(config)
 
 	cc := make(chan struct{})
 	<-cc

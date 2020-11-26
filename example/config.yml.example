@@ -1,0 +1,26 @@
+logging:
+  debug: false
+inputs:
+  envoy:
+    accesslog:
+      server:
+        host: '127.0.0.1'
+        port: 5446
+    xds:
+      server:
+        host: '127.0.0.1'
+        port: 5447
+transformers:
+  enabled: false
+outputs:
+  aws:
+    access_key_id: ''
+    region: 'us-east-2'
+    secret_access_key: ''
+    s3:
+      base_path: 'fireside-test'
+      bucket: 'fe-cv-deploy-logs-us-east-2'
+  cache:
+    events:
+      directory: '/tmp/fireside/cache'
+      prefix: 'fireside-event-cache'

@@ -1,4 +1,4 @@
-package configure
+package fireside
 
 import (
     "flag"

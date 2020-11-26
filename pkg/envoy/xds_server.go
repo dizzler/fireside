@@ -1,4 +1,4 @@
-package envoy_proxy_provider
+package fireside
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 
 	"sync"
 	//"sync/atomic"
-	//"time"
+	"time"
 
 	//envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	//envoy_api_v2_core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
@@ -22,47 +22,24 @@ import (
 
 	//"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	cachev3 "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
+	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
+	serverv3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
-	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
-
-	serverv3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
-)
-
-var (
-	debug       bool
-	onlyLogging bool
-	withALS     bool
-
-	localhost = "127.0.0.1"
-
-	port        uint
-	gatewayPort uint
-	alsPort     uint
-
-	mode string
-
-	version int32
-
-	cache cachev3.SnapshotCache
-
-	strSlice = []string{"www.bbc.com", "www.yahoo.com", "blog.salrashid.me"}
+	configure "fireside/pkg/configure"
 )
 
 const (
 	XdsCluster = "xds_cluster"
 	Ads        = "ads"
 	Xds        = "xds"
-	Rest       = "rest"
 )
 
+var gatewayPort uint
 func init() {
-	flag.BoolVar(&debug, "debug", true, "Use debug logging")
-	flag.UintVar(&port, "port", 18000, "Management server port")
 	flag.UintVar(&gatewayPort, "gateway", 18001, "Management server port for HTTP gateway")
-	flag.StringVar(&mode, "ads", Ads, "Management server type (ads only now)")
 }
 
 func (cb *Callbacks) Report() {
@@ -117,38 +94,15 @@ type Callbacks struct {
 
 const grpcMaxConcurrentStreams = 1000000
 
-// RunManagementServer starts an xDS server at the given port.
-func RunManagementServer(ctx context.Context, server serverv3.Server, port uint) {
-	var grpcOptions []grpc.ServerOption
-	grpcOptions = append(grpcOptions, grpc.MaxConcurrentStreams(grpcMaxConcurrentStreams))
-	grpcServer := grpc.NewServer(grpcOptions...)
-
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		log.WithError(err).Fatal("failed to listen")
-	}
-
-	// register services
-	discoverygrpc.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
-
-	// NOT used since we run ADS
-	// endpointservice.RegisterEndpointDiscoveryServiceServer(grpcServer, server)
-	// clusterservice.RegisterClusterDiscoveryServiceServer(grpcServer, server)
-	// routeservice.RegisterRouteDiscoveryServiceServer(grpcServer, server)
-	// listenerservice.RegisterListenerDiscoveryServiceServer(grpcServer, server)
-
-	log.WithFields(log.Fields{"port": port}).Info("management server listening")
-	go func() {
-		if err = grpcServer.Serve(lis); err != nil {
-			log.Error(err)
-		}
-	}()
-	<-ctx.Done()
-
-	grpcServer.GracefulStop()
+type XdsServer struct {
+        Cache  cachev3.SnapshotCache
+	Cb     *Callbacks
+	Ctx    context.Context
+	Port   uint
+	Server serverv3.Server
 }
 
-func ServeEnvoyXds(port uint) {
+func NewXdsServer(config *configure.Config) *XdsServer {
 	ctx := context.Background()
 
 	log.Info("Starting control plane for Envoy xDS")
@@ -159,29 +113,84 @@ func ServeEnvoyXds(port uint) {
 		Fetches:  0,
 		Requests: 0,
 	}
-	cache = cachev3.NewSnapshotCache(true, cachev3.IDHash{}, nil)
+	cache := cachev3.NewSnapshotCache(true, cachev3.IDHash{}, nil)
 
+	port := config.Inputs.Envoy.Xds.Server.Port
 	srv := serverv3.NewServer(ctx, cache, cb)
 
-	// start the xDS server
-	go RunManagementServer(ctx, srv, port)
+	return &XdsServer{Cache: cache, Cb: cb, Ctx: ctx, Port: port, Server: srv}
+}
 
-	<-signal
+// RunManagementServer starts an xDS server at the given port.
+func (xc *XdsServer) RunManagementServer() {
+	var grpcOptions []grpc.ServerOption
+	grpcOptions = append(grpcOptions, grpc.MaxConcurrentStreams(grpcMaxConcurrentStreams))
+	grpcServer := grpc.NewServer(grpcOptions...)
 
-	status_keys := cache.GetStatusKeys()
-	for _, s_key := range status_keys {
-		log.Info("Getting info for status key " + s_key)
-		info := cache.GetStatusInfo(s_key)
-		node := info.GetNode()
-		if len(node.Id) > 0 {
-			log.Info("Got info for Envoy node ID " + node.Id)
-		} else {
-			log.Error("Failed to get Envoy node info and/or ID")
-		}
-		nodeJson, err := json.Marshal(node)
-		if err != nil {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", xc.Port))
+	if err != nil {
+		log.WithError(err).Fatal("failed to listen")
+	}
+
+	// register services
+	discoverygrpc.RegisterAggregatedDiscoveryServiceServer(grpcServer, xc.Server)
+
+	log.WithFields(log.Fields{"port": xc.Port}).Info("management server listening")
+	go func() {
+		if err = grpcServer.Serve(lis); err != nil {
 			log.Error(err)
 		}
-		log.Debug(fmt.Println(string(nodeJson)))
+	}()
+	<-xc.Ctx.Done()
+
+	grpcServer.GracefulStop()
+}
+
+func (xc *XdsServer) ListStatusKeys() []string {
+	status_keys := xc.Cache.GetStatusKeys()
+
+	for _, s_key := range status_keys {
+		log.Debug("Detected Envoy node with status key = " + s_key)
 	}
+	return status_keys
+}
+
+func (xc *XdsServer) GetNodeInfo(nodeId string) []byte {
+        log.Debug("Getting info for Envoy node ID " + nodeId)
+        info := xc.Cache.GetStatusInfo(nodeId)
+        node := info.GetNode()
+        nodeJson, err := json.Marshal(node)
+        if err != nil {
+                log.Error(err)
+        }
+	log.Debug("Printing info for Envoy node ID " + nodeId + " : " + string(nodeJson))
+	return nodeJson
+}
+
+func ServeEnvoyXds(config *configure.Config) {
+	xdss := NewXdsServer(config)
+	// start the xDS server
+	go xdss.RunManagementServer()
+	// Create a ticket for periodic refresh of state
+	var refreshSeconds int = 5
+	refreshInterval := time.Duration(refreshSeconds)
+	refreshTicker := time.NewTicker(refreshInterval * time.Second)
+	// Create a common 'quit' channel for stopping ticker(s) as needed
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <- refreshTicker.C:
+				nodes := xdss.ListStatusKeys()
+				for _, node := range nodes {
+					xdss.GetNodeInfo(node)
+				}
+			case <- quit:
+				refreshTicker.Stop()
+				return
+			}
+		}
+	}()
+
+	<-xdss.Cb.Signal
 }

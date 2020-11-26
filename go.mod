@@ -9,6 +9,7 @@ require (
 	github.com/envoyproxy/go-control-plane v0.9.7
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
 	github.com/kisielk/sqlstruct v0.0.0-20201105191214-5f3e10d3ab46 // indirect
+	github.com/pkg/sftp v1.12.0 // indirect
 	github.com/qntfy/jsonparser v1.0.2 // indirect
 	github.com/qntfy/kazaam v3.4.8+incompatible // indirect
 	github.com/sirupsen/logrus v1.7.0
@@ -17,6 +18,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-replace github.com/dailyburn/ratchet => ./ratchet
-
-replace github.com/dailyburn/ratchet/util => ./ratchet/util
+replace (
+        github.com/dailyburn/ratchet => ./ratchet
+        github.com/dailyburn/ratchet/util => ./ratchet/util
+)

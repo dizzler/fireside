@@ -1,4 +1,4 @@
-package envoy_proxy_provider
+package fireside
 
 import (
         "encoding/json"
@@ -14,7 +14,7 @@ const (
         eventCategoryHttp = "proxy_http"
         eventCategoryTcp = "proxy_tcp"
         eventSrcGrpc = "envoy_grpc"
-        eventType    = "envoy_proxy_provider"
+        eventType    = "envoy_accesslog"
 )
 
 type logger struct{}
@@ -47,11 +47,13 @@ type EnvoyAccessLogJson struct {
 func (svc *AccessLogService) StreamAccessLogs(stream als.AccessLogService_StreamAccessLogsServer) error {
 	var logName string
 
+	log.Debug("Running StreamAccessLogs function for AccessLogService type")
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
 			continue
 		}
+		log.Debug("Received envoy accesslog message from gRPC stream")
 		if msg.Identifier != nil {
 			logName = msg.Identifier.LogName
 		}

@@ -144,6 +144,7 @@ func RunFsCache(cacher *FsCacheWriter) {
 			case <- quit:
 				rotateTicker.Stop()
 				cleanTicker.Stop()
+				archiverTicker.Stop()
 				return
 		        }
 		}

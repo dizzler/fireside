@@ -1,4 +1,4 @@
-package envoy_proxy_provider
+package fireside
 
 import (
 	"context"
