@@ -1,4 +1,4 @@
-package output_processors
+package fireside
 // File: output_processors/aws_s3.go
 
 import (

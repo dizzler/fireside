@@ -1,9 +1,10 @@
-package main
+package fireside
 
 import (
-        epp "envoy_proxy_provider"
-	outproc "output_processors"
-	transform "transformers"
+	"fireside/configure"
+        epp "fireside/envoy_proxy_provider"
+	outproc "fireside/output_processors"
+	transform "fireside/transformers"
 
         log "github.com/sirupsen/logrus"
 
@@ -16,7 +17,7 @@ var (
         outputConfig    *outproc.OutputConfig
 )
 
-func CreateEventPipeline(config *Config) {
+func CreateEventPipeline(config *configure.Config) {
         // Set the various *Config values used throughout the data processing pipeline
         awsOutputConfig = &outproc.AwsOutputConfig{
                 Region: config.Outputs.AWS.Region,

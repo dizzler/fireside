@@ -1,4 +1,4 @@
-package output_processors
+package fireside
 
 import (
 	"github.com/aws/aws-sdk-go/aws/session"
