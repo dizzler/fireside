@@ -69,6 +69,9 @@ type Config struct {
 	} `yaml:"cache"`
 
     } `yaml:"outputs"`
+
+    // policies to be applied to managed nodes and/or data streams
+    Policies []Policy `yaml:"policies"`
 }
 
 // NewConfig returns a new decoded Config struct

@@ -3,24 +3,19 @@ package fireside
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
-	//"io/ioutil"
 	"net"
-	//"os"
 
 	"sync"
-	//"sync/atomic"
 	"time"
 
 	//envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	//envoy_api_v2_core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	//core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	//auth "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
+	//"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 
 	//"github.com/golang/protobuf/ptypes"
-
-	//"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	cachev3 "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	serverv3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
@@ -30,17 +25,6 @@ import (
 
 	configure "fireside/pkg/configure"
 )
-
-const (
-	XdsCluster = "xds_cluster"
-	Ads        = "ads"
-	Xds        = "xds"
-)
-
-var gatewayPort uint
-func init() {
-	flag.UintVar(&gatewayPort, "gateway", 18001, "Management server port for HTTP gateway")
-}
 
 func (cb *Callbacks) Report() {
 	cb.mu.Lock()

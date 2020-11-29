@@ -2,7 +2,7 @@ package fireside
 
 import (
 	configure "fireside/pkg/configure"
-        envoy "fireside/pkg/envoy"
+        envoy_logs "fireside/pkg/envoy/accesslog"
 	outproc "fireside/pkg/output_processors"
 	transform "fireside/pkg/transformers"
 
@@ -30,7 +30,7 @@ func CreateEventPipeline(config *configure.Config) {
                 CheckCert: awsCheckCerts}
 
 	// Initialize the data extraction/input processors for pipeline
-        envoyAccesslogProc := envoy.NewEnvoyAccesslogReader(config.Inputs.Envoy.Accesslog.Server.Port)
+        envoyAccesslogProc := envoy_logs.NewEnvoyAccesslogReader(config.Inputs.Envoy.Accesslog.Server.Port)
 
         // Initialize the transformation/enrichment processors for the pipeline
 	var transformerSpec string = ""

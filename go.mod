@@ -8,6 +8,7 @@ require (
 	github.com/dailyburn/ratchet/util v0.0.0
 	github.com/envoyproxy/go-control-plane v0.9.7
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
+	github.com/golang/protobuf v1.4.2
 	github.com/kisielk/sqlstruct v0.0.0-20201105191214-5f3e10d3ab46 // indirect
 	github.com/pkg/sftp v1.12.0 // indirect
 	github.com/qntfy/jsonparser v1.0.2 // indirect
@@ -19,6 +20,6 @@ require (
 )
 
 replace (
-        github.com/dailyburn/ratchet => ./ratchet
-        github.com/dailyburn/ratchet/util => ./ratchet/util
+	github.com/dailyburn/ratchet => ./ratchet
+	github.com/dailyburn/ratchet/util => ./ratchet/util
 )

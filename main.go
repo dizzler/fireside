@@ -2,7 +2,7 @@ package main
 
 import (
 	configure "fireside/pkg/configure"
-        envoy "fireside/pkg/envoy"
+        envoy_xds "fireside/pkg/envoy/xds"
         log "github.com/sirupsen/logrus"
 	"os"
 	pipeline "fireside/pkg/pipeline"
@@ -24,7 +24,7 @@ func main() {
 
 	go pipeline.CreateEventPipeline(config)
 
-	go envoy.ServeEnvoyXds(config)
+	go envoy_xds.ServeEnvoyXds(config)
 
 	cc := make(chan struct{})
 	<-cc

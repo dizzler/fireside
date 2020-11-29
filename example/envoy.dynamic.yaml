@@ -1,0 +1,88 @@
+logging:
+  debug: true
+inputs:
+  envoy:
+    accesslog:
+      server:
+        host: '127.0.0.1'
+        port: 5446
+    xds:
+      server:
+        host: '127.0.0.1'
+        port: 5447
+transformers:
+  enabled: false
+outputs:
+  aws:
+    access_key_id: ''
+    region: 'us-east-2'
+    secret_access_key: ''
+    s3:
+      base_path: 'fireside-test'
+      bucket: 'fe-cv-deploy-logs-us-east-2'
+  cache:
+    events:
+      directory: '/tmp/fireside/cache'
+      prefix: 'fireside-event-cache'
+policies:
+  - id: 'fs-envoy-def-001'
+    type: 'envoyProxyDefinition'
+    priority: 1
+    filters: []
+    config:
+      clusters:
+        - name: 'test123-http-cluster'
+          mode: 'Xds'
+        - name: 'test123-tcp-cluster'
+          mode: 'Xds'
+      endpoints:
+        - cluster_name: 'test123-http-cluster'
+          host: '127.0.0.1'
+          port: 180
+        - cluster_name: 'test123-tcp-cluster'
+          host: '127.0.0.1'
+          port: 18000
+      filters:
+        - name: 'test123-http-router'
+          type: 'http-router'
+          config: {}
+        - name: 'test123-tcp-proxy'
+          type: 'tcp-proxy'
+          config:
+            cluster_name: 'test123-tcp-cluster'
+      listeners:
+        - name: 'test123-http-listener'
+          type: 'http'
+          host: '127.0.0.1'
+          port: 80
+          filter_chains:
+            - name: 'test123-http-filter-chain'
+              filters:
+                - 'test123-http-router'
+          routes:
+            - 'test123-http-route'
+        - name: 'test123-tcp-listener'
+          type: 'tcp'
+          host: '127.0.0.1'
+          port: 8000
+          filter_chains:
+            - name: 'test123-tcp-filter-chain'
+              filters:
+                - 'test123-tcp-proxy'
+          routes: []
+      route_configs:
+        - name: 'test123-http-route'
+          virtual_hosts:
+            - 'test123-http-virthost1'
+      secrets:
+        - ca_file_path: '/etc/fireside/tls/ca.pem'
+          ca_secret_name: 'fireside-ca'
+          crt_file_path: '/etc/fireside/tls/tls.crt'
+          crt_secret_name: 'fireside-crt'
+          key_file_path: '/etc/fireside/tls/tls.key'
+      virtual_hosts:
+        - name: 'test123-http-virthost1'
+          cluster_name: 'test123-http-cluster'
+          domains:
+            - '*'
+          prefix_match: '/'
