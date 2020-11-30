@@ -19,18 +19,27 @@ type Policy struct {
 }
 
 type PolicyConfig struct {
-    Clusters     []EnvoyCluster     `yaml:"clusters"`
-    Endpoints    []EnvoyEndpoint    `yaml:"endpoints"`
-    Filters      []EnvoyFilter      `yaml:"filters"`
-    Listeners    []EnvoyListener    `yaml:"listeners"`
-    RouteConfigs []EnvoyRouteConfig `yaml:"route_configs"`
-    Secrets      []EnvoySecret      `yaml:"secrets"`
-    VirtualHosts []EnvoyVirtualHost `yaml:"virtual_hosts"`
+    AccessLoggers []EnvoyAccesslogConfig `yaml:"access_loggers"`
+    Clusters      []EnvoyCluster         `yaml:"clusters"`
+    Endpoints     []EnvoyEndpoint        `yaml:"endpoints"`
+    Filters       []EnvoyFilter          `yaml:"filters"`
+    FilterChains  []EnvoyFilterChain     `yaml:"filter_chains"`
+    Listeners     []EnvoyListener        `yaml:"listeners"`
+    RouteConfigs  []EnvoyRouteConfig     `yaml:"route_configs"`
+    Secrets       []EnvoySecret          `yaml:"secrets"`
+    VirtualHosts  []EnvoyVirtualHost     `yaml:"virtual_hosts"`
 }
 
 type PolicyFilter struct {
     Key   string `yaml:"key"`
     Value string `yaml:"value"`
+}
+
+type EnvoyAccesslogConfig struct {
+    Name        string `yaml:"name"`
+    ClusterName string `yaml:"cluster_name"`
+    ConfigType  string `yaml:"config_type"`
+    LogName     string `yaml:"log_name"`
 }
 
 type EnvoyCluster struct {
@@ -45,9 +54,21 @@ type EnvoyEndpoint struct {
 }
 
 type EnvoyFilter struct {
-    Name   string            `yaml:"name"`
-    Type   string            `yaml:"type"`
-    Config map[string]string `yaml:"config"`
+    Name                string            `yaml:"name"`
+    Type                string            `yaml:"type"`
+    AccessLoggers       []string          `yaml:"access_loggers"`
+    ComponentFilterType string            `yaml:"component_filter_type"`
+    ComponentFilters    []string          `yaml:"component_filters"`
+    ConfigType          string            `yaml:"config_type"`
+    Config              EnvoyFilterConfig `yaml:"config"`
+    Mode                string            `yaml:"mode"`
+    StatPrefix          string            `yaml:"stat_prefix"`
+    UpstreamTarget      string            `yaml:"upstream_target"`
+}
+
+// Create an empty struct to contain filter-specific configs
+type EnvoyFilterConfig struct {
+    DynamicStats bool `yaml:"dynamic_stats"`
 }
 
 type EnvoyFilterChain struct {
@@ -56,12 +77,13 @@ type EnvoyFilterChain struct {
 }
 
 type EnvoyListener struct {
-    Name         string             `yaml:"name"`
-    Type         string             `yaml:"type"`
-    Host         string             `yaml:"host"`
-    Port         uint32             `yaml:"port"`
-    FilterChains []EnvoyFilterChain `yaml:"filter_chains"`
-    Routes       []string           `yaml:"routes"`
+    Name         string   `yaml:"name"`
+    Mode         string   `yaml:"mode"`
+    Type         string   `yaml:"type"`
+    Host         string   `yaml:"host"`
+    Port         uint32   `yaml:"port"`
+    FilterChains []string `yaml:"filter_chains"`
+    Routes       []string `yaml:"routes"`
 }
 
 type EnvoyRouteConfig struct {

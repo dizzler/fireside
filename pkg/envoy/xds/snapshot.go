@@ -1,6 +1,8 @@
 package fireside
 
 import (
+	configure "fireside/pkg/configure"
+	log "github.com/sirupsen/logrus"
 	//"fmt"
 	//"os"
 
@@ -17,15 +19,15 @@ import (
 	// sub-packages of go-control-plane ============================
 	//auth "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	cachev3 "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
-	//cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	//core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	//discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
-	//endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	//envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	//envoy_api_v2_core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	//hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
-	//listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
-	//route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	//serverv3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	//types "github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	//wellknown "github.com/envoyproxy/go-control-plane/pkg/wellknown"
@@ -48,185 +50,53 @@ var (
 	cache cachev3.SnapshotCache
 )
 
+func MakeNodeSnapshot(config *configure.Policy) {
+	// create vars used in this function
+	var (
+		policy *configure.PolicyConfig = &config.Config
+		routes []*route.RouteConfiguration
+	)
+	// create Envoy route configs as defined by policy ; explicit creation of route
+	// configs implicitly results in the creation of associated resources, such as:
+	//   - MakeVirtualHost
+	for _, routeCfg := range policy.RouteConfigs {
+		log.Debug("creating Envoy route config " + routeCfg.Name)
+		route := MakeRouteConfig(&routeCfg, policy)
+		routes = append(routes, route)
+	}
+	// create Envoy (downstream) listeners as defined by policy ; explicit creation of
+	// listener implicitly results in the creation of associated resources, such as:
+	//   - MakeFilterChain
+	//   - MakeNetworkFilter
+	//   - MakeHttpConnectionManagerConfig
+	//     - MakeAccesslogConfig
+	//     - MakeHttpFilter
+	//   - MakeTcpProxyConfig
+	var listeners []*listener.Listener
+	for _, listenerCfg := range policy.Listeners {
+		log.Debug("creating Envoy listener config " + listenerCfg.Name)
+		listener := MakeListener(&listenerCfg, policy)
+		listeners = append(listeners, listener)
+	}
+	// create Envoy (upstream) clusters as defined by policy
+	var clusters []*cluster.Cluster
+	for _, clusterCfg := range policy.Clusters {
+		log.Debug("creating Envoy cluster config " + clusterCfg.Name)
+		cluster := MakeCluster(&clusterCfg)
+		clusters = append(clusters, cluster)
+	}
+	// create Envoy (upstream) endpoints (assigned to clusters) as defined by policy
+	var endpoints []*endpoint.ClusterLoadAssignment
+	for _, endpointCfg := range policy.Endpoints {
+		log.Debug("creating Envoy endpoint config for cluster " + endpointCfg.ClusterName)
+		endpoint := MakeEndpoint(&endpointCfg)
+		endpoints = append(endpoints, endpoint)
+	}
+	// MakeRuntime
+	// MakeSecrets
+}
+
 /*
-func MakeXdsCluster(clusterName string) *cluster.Cluster {
-        hst := &core.Address{Address: &core.Address_SocketAddress{
-                SocketAddress: &core.SocketAddress{
-                        Address:  remoteHost,
-                        Protocol: core.SocketAddress_TCP,
-                        PortSpecifier: &core.SocketAddress_PortValue{
-                                PortValue: uint32(443),
-                        },
-                },
-        }}
-        uctx := &envoy_api_v2_auth.UpstreamTlsContext{}
-        tctx, err := ptypes.MarshalAny(uctx)
-        if err != nil {
-                log.Fatal(err)
-        }
-
-        return &cluster.Cluster{
-                Name:                 clusterName,
-                ConnectTimeout:       ptypes.DurationProto(2 * time.Second),
-                ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_LOGICAL_DNS},
-                DnsLookupFamily:      cluster.Cluster_V4_ONLY,
-                LbPolicy:             cluster.Cluster_ROUND_ROBIN,
-                LoadAssignment: &endpoint.ClusterLoadAssignment{
-                        ClusterName: clusterName,
-                        Endpoints: []*endpoint.LocalityLbEndpoints{{
-                                LbEndpoints: []*endpoint.LbEndpoint{
-                                        {
-                                                HostIdentifier: &endpoint.LbEndpoint_Endpoint{
-                                                        Endpoint: &endpoint.Endpoint{
-                                                                Address: hst,
-                                                        }},
-                                        },
-                                },
-                        }},
-                },
-                TransportSocket: &core.TransportSocket{
-                        Name: "envoy.transport_sockets.tls",
-                        ConfigType: &core.TransportSocket_TypedConfig{
-                                TypedConfig: tctx,
-                        },
-                },
-        }
-}
-
-
-func MakeXdsListener(listenerName string) *listener.Listener {
-        var targetHost = v
-        var targetPrefix = "/"
-        var virtualHostName = "local_service"
-        var routeConfigName = "local_route"
-
-        log.Infof(">>>>>>>>>>>>>>>>>>> creating listener " + listenerName)
-
-        rte := &route.RouteConfiguration{
-                Name: routeConfigName,
-                VirtualHosts: []*route.VirtualHost{{
-                        Name:    virtualHostName,
-                        Domains: []string{"*"},
-                        Routes: []*route.Route{{
-                                Match: &route.RouteMatch{
-                                        PathSpecifier: &route.RouteMatch_Prefix{
-                                                Prefix: targetPrefix,
-                                        },
-                                },
-                                Action: &route.Route_Route{
-                                        Route: &route.RouteAction{
-                                                ClusterSpecifier: &route.RouteAction_Cluster{
-                                                        Cluster: clusterName,
-                                                },
-                                                PrefixRewrite: "/robots.txt",
-                                                HostRewriteSpecifier: &route.RouteAction_HostRewriteLiteral{
-                                                        HostRewriteLiteral: targetHost,
-                                                },
-                                        },
-                                },
-                        }},
-                }},
-        }
-
-        manager := &hcm.HttpConnectionManager{
-                CodecType:  hcm.HttpConnectionManager_AUTO,
-                StatPrefix: "ingress_http",
-                RouteSpecifier: &hcm.HttpConnectionManager_RouteConfig{
-                        RouteConfig: rte,
-                },
-                HttpFilters: []*hcm.HttpFilter{{
-                        Name: wellknown.Router,
-                }},
-        }
-
-        pbst, err := ptypes.MarshalAny(manager)
-        if err != nil {
-                log.Fatal(err)
-        }
-
-        // use the following imports
-        // envoy_api_v2_core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
-        // envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
-        // core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
-        // auth "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
-
-        // 1. send TLS certs filename back directly
-
-        //sdsTls := &envoy_api_v2_auth.DownstreamTlsContext{
-        //        CommonTlsContext: &envoy_api_v2_auth.CommonTlsContext{
-        //                TlsCertificates: []*envoy_api_v2_auth.TlsCertificate{{
-        //                        CertificateChain: &envoy_api_v2_core.DataSource{
-        //                                Specifier: &envoy_api_v2_core.DataSource_InlineBytes{InlineBytes: []byte(pub)},
-        //                        },
-        //                        PrivateKey: &envoy_api_v2_core.DataSource{
-        //                                Specifier: &envoy_api_v2_core.DataSource_InlineBytes{InlineBytes: []byte(priv)},
-        //                        },
-        //                }},
-        //        },
-        //}
-
-        // or
-        // 2. send TLS SDS Reference value
-        // sdsTls := &envoy_api_v2_auth.DownstreamTlsContext{
-        // 	CommonTlsContext: &envoy_api_v2_auth.CommonTlsContext{
-        // 		TlsCertificateSdsSecretConfigs: []*envoy_api_v2_auth.SdsSecretConfig{{
-        // 			Name: "server_cert",
-        // 		}},
-        // 	},
-        // }
-
-        // 3. SDS via ADS
-
-        sdsTls := &auth.DownstreamTlsContext{
-                CommonTlsContext: &auth.CommonTlsContext{
-                        TlsCertificateSdsSecretConfigs: []*auth.SdsSecretConfig{{
-                                Name: "server_cert",
-                                SdsConfig: &core.ConfigSource{
-                                        ConfigSourceSpecifier: &core.ConfigSource_Ads{
-                                                Ads: &core.AggregatedConfigSource{},
-                                        },
-                                        ResourceApiVersion: core.ApiVersion_V3,
-                                },
-                        }},
-                },
-        }
-
-        scfg, err := ptypes.MarshalAny(sdsTls)
-        if err != nil {
-                log.Fatal(err)
-        }
-
-        return &listener.Listener{
-                Name: listenerName,
-                Address: &core.Address{
-                        Address: &core.Address_SocketAddress{
-                                SocketAddress: &core.SocketAddress{
-                                        Protocol: core.SocketAddress_TCP,
-                                        Address:  localhost,
-                                        PortSpecifier: &core.SocketAddress_PortValue{
-                                                PortValue: 10000,
-                                        },
-                                },
-                        },
-                },
-                FilterChains: []*listener.FilterChain{{
-                        Filters: []*listener.Filter{{
-                                Name: wellknown.HTTPConnectionManager,
-                                ConfigType: &listener.Filter_TypedConfig{
-                                        TypedConfig: pbst,
-                                },
-                        }},
-                        TransportSocket: &core.TransportSocket{
-                                Name: "envoy.transport_sockets.tls",
-                                ConfigType: &core.TransportSocket_TypedConfig{
-                                        TypedConfig: scfg,
-                                },
-                        },
-                }},
-        }
-}
-
-
 func MakeXdsSecret(secretName string, pub []byte, priv []byte) *auth.Secret {
         var secretName = "server_cert"
 
