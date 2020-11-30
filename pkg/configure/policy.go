@@ -26,6 +26,7 @@ type PolicyConfig struct {
     FilterChains  []EnvoyFilterChain     `yaml:"filter_chains"`
     Listeners     []EnvoyListener        `yaml:"listeners"`
     RouteConfigs  []EnvoyRouteConfig     `yaml:"route_configs"`
+    Runtimes      []EnvoyRuntime         `yaml:"runtimes"`
     Secrets       []EnvoySecret          `yaml:"secrets"`
     VirtualHosts  []EnvoyVirtualHost     `yaml:"virtual_hosts"`
 }
@@ -89,6 +90,10 @@ type EnvoyListener struct {
 type EnvoyRouteConfig struct {
     Name         string   `yaml:"name"`
     VirtualHosts []string `yaml:"virtual_hosts"`
+}
+
+type EnvoyRuntime struct {
+    Name string `yaml:"name"`
 }
 
 type EnvoySecret struct {

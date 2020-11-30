@@ -1,125 +1,41 @@
-logging:
-  debug: true
-inputs:
-  envoy:
-    accesslog:
-      server:
-        host: '127.0.0.1'
-        port: 5446
-    xds:
-      server:
-        host: '127.0.0.1'
-        port: 5447
-transformers:
-  enabled: false
-outputs:
-  aws:
-    access_key_id: ''
-    region: 'us-east-2'
-    secret_access_key: ''
-    s3:
-      base_path: 'fireside-test'
-      bucket: 'fe-cv-deploy-logs-us-east-2'
-  cache:
-    events:
-      directory: '/tmp/fireside/cache'
-      prefix: 'fireside-event-cache'
-policies:
-  - id: 'fs-envoy-def-001'
-    type: 'envoyProxyDefinition'
-    priority: 1
-    filters: []
-    config:
-      access_loggers:
-        - name: 'test123-access-logger'
-          cluster_name: 'test123-accesslog-cluster'
-          config_type: 'envoy.access_loggers.http_grpc'
-          log_name: 'test123-envoy-accesslog'
-      clusters:
-        - name: 'test123-accesslog-cluster'
-          mode: 'Xds'
-        - name: 'test123-http-cluster'
-          mode: 'Xds'
-        - name: 'test123-tcp-cluster'
-          mode: 'Xds'
-      endpoints:
-        - cluster_name: 'test123-accesslog-cluster'
-          host: '127.0.0.1'
-          port: 5446
-        - cluster_name: 'test123-http-cluster'
-          host: '127.0.0.1'
-          port: 180
-        - cluster_name: 'test123-tcp-cluster'
-          host: '127.0.0.1'
-          port: 18000
-      filter_chains:
-        - name: 'test123-http-filter-chain'
-          filters:
-            - 'test123-http-conn-mgr'
-        - name: 'test123-tcp-filter-chain'
-          filters:
-            - 'test123-tcp-proxy'
-      filters:
-        - name: 'test123-http-conn-mgr'
-          type: 'network'
-          access_loggers:
-            - 'test123-access-logger'
-          component_filter_type: 'http'
-          component_filters:
-            - 'test123-http-router'
-          config_type: 'envoy.filters.network.http_connection_manager'
-          config: {}
-          mode: 'Xds'
-          stat_prefix: 'http'
-          upstream_target: 'test123-http-default-route'
-        - name: 'test123-http-router'
-          type: 'http'
-          config_type: 'envoy.filters.http.router'
-          access_loggers: []
-          component_filter_type: ''
-          component_filters: []
-          config:
-            dynamic_stats: false
-          mode: 'Xds'
-          stat_prefix: ''
-          upstream_target: ''
-        - name: 'test123-tcp-proxy'
-          type: 'network'
-          access_loggers: []
-          component_filter_type: ''
-          component_filters: []
-          config_type: 'envoy.filters.network.tcp_proxy'
-          config:
-            cluster_name: 'test123-tcp-cluster'
-          mode: 'Xds'
-          stat_prefix: ''
-          upstream_target: 'test123-tcp-cluster'
-      listeners:
-        - name: 'test123-http-listener'
-          type: 'http'
-          host: '127.0.0.1'
-          port: 80
-          filter_chains:
-            - 'test123-http-filter-chain'
-        - name: 'test123-tcp-listener'
-          type: 'tcp'
-          host: '127.0.0.1'
-          port: 8000
-          filter_chains:
-            - 'test123-tcp-filter-chain'
-      route_configs:
-        - name: 'test123-http-default-route'
-          virtual_hosts:
-            - 'test123-http-virthost1'
-      secrets:
-        - ca_file_path: '/etc/fireside/tls/ca.pem'
-          ca_secret_name: 'fireside-ca'
-          crt_file_path: '/etc/fireside/tls/tls.crt'
-          crt_secret_name: 'fireside-crt'
-          key_file_path: '/etc/fireside/tls/tls.key'
-      virtual_hosts:
-        - name: 'test123-http-virthost1'
-          cluster_name: 'test123-http-cluster'
-          domains:
-            - '*'
-          prefix_match: '/'
+admin:
+  access_log_path: /dev/null
+  address:
+    socket_address:
+      address: 127.0.0.1
+      port_value: 9000
+
+dynamic_resources:
+  ads_config:
+    api_type: GRPC
+    transport_api_version: V3
+    set_node_on_first_message_only: true
+    grpc_services:
+      - envoy_grpc:
+          cluster_name: xds_cluster
+  lds_config:
+    resource_api_version: V3
+    ads: {}
+  cds_config:
+    resource_api_version: V3
+    ads: {}
+
+node:
+  cluster: service_greeter
+  id: 'test-id-1'
+
+static_resources:
+  clusters:
+    - name: xds_cluster
+      connect_timeout: 2s
+      http2_protocol_options: {}
+      type: STATIC
+      load_assignment:
+        cluster_name: xds_cluster
+        endpoints:
+          - lb_endpoints:
+            - endpoint:
+                address:
+                  socket_address:
+                    address: 127.0.0.1
+                    port_value: 5447

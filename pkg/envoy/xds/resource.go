@@ -33,7 +33,8 @@ import (
 )
 
 const (
-	localhost = "127.0.0.1"
+	// commonly used string
+	fireside_str = "fireside"
 
 	// XdsCluster is the cluster name for the control server (used by non-ADS set-up)
 	XdsCluster = "xds_cluster"
@@ -92,7 +93,7 @@ func configSource(mode string) *core.ConfigSource {
 // in other Envoy resource configs (e.g. HTTP Connection Manager)
 func MakeAccesslogConfig(config *configure.EnvoyAccesslogConfig) *alf.AccessLog {
 	var accesslogCfg *als.HttpGrpcAccessLogConfig
-	switch{
+	switch {
 	case config.ConfigType == wellknown.HTTPGRPCAccessLog:
 		accesslogCfg = &als.HttpGrpcAccessLogConfig{
 			CommonConfig: &als.CommonGrpcAccessLogConfig{
@@ -345,16 +346,13 @@ func MakeRouteConfig(routeCfg *configure.EnvoyRouteConfig, policy *configure.Pol
 
 // MakeRuntime creates an RTDS layer with some fields, where the RTDS layer allows
 // the runtime itself to be discoverable via Envoy xDS.
-func MakeRuntime(runtimeName string) *runtime.Runtime {
+func MakeRuntime(config *configure.EnvoyRuntime) *runtime.Runtime {
 	return &runtime.Runtime{
-		Name: runtimeName,
+		Name: config.Name,
 		Layer: &pstruct.Struct{
 			Fields: map[string]*pstruct.Value{
-				"field-0": {
-					Kind: &pstruct.Value_NumberValue{NumberValue: 100},
-				},
-				"field-1": {
-					Kind: &pstruct.Value_StringValue{StringValue: "fireside"},
+				"xds-server-type": {
+					Kind: &pstruct.Value_StringValue{StringValue: fireside_str},
 				},
 			},
 		},

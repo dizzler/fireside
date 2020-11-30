@@ -26,6 +26,8 @@ import (
 	configure "fireside/pkg/configure"
 )
 
+const Filterkey_Node = "node-id"
+
 func (cb *Callbacks) Report() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -79,11 +81,12 @@ type Callbacks struct {
 const grpcMaxConcurrentStreams = 1000000
 
 type XdsServer struct {
-        Cache  cachev3.SnapshotCache
-	Cb     *Callbacks
-	Ctx    context.Context
-	Port   uint
-	Server serverv3.Server
+        Cache    cachev3.SnapshotCache
+	Cb       *Callbacks
+	Ctx      context.Context
+	Policies []configure.Policy
+	Port     uint
+	Server   serverv3.Server
 }
 
 func NewXdsServer(config *configure.Config) *XdsServer {
@@ -99,13 +102,15 @@ func NewXdsServer(config *configure.Config) *XdsServer {
 	}
 	cache := cachev3.NewSnapshotCache(true, cachev3.IDHash{}, nil)
 
+	policies := config.Policies
+
 	port := config.Inputs.Envoy.Xds.Server.Port
 	srv := serverv3.NewServer(ctx, cache, cb)
 
-	return &XdsServer{Cache: cache, Cb: cb, Ctx: ctx, Port: port, Server: srv}
+	return &XdsServer{Cache: cache, Cb: cb, Ctx: ctx, Policies: policies, Port: port, Server: srv}
 }
 
-// RunManagementServer starts an xDS server at the given port.
+// RunManagementServer starts an xDS server at the given port
 func (xc *XdsServer) RunManagementServer() {
 	var grpcOptions []grpc.ServerOption
 	grpcOptions = append(grpcOptions, grpc.MaxConcurrentStreams(grpcMaxConcurrentStreams))
@@ -151,12 +156,36 @@ func (xc *XdsServer) GetNodeInfo(nodeId string) []byte {
 	return nodeJson
 }
 
+func (xc *XdsServer) ApplyNodePolicy(nodeId string) {
+	for _, envoyPolicy := range xc.Policies {
+		for _, policyFilter := range envoyPolicy.Filters {
+			// apply the first policy match for the specified nodeId
+			switch {
+			case (policyFilter.Key == Filterkey_Node) && (policyFilter.Value == nodeId):
+				snapshot := NewEnvoySnapshot(xc.Cache, &envoyPolicy.Config)
+				snapshot.SetNodeId(nodeId)
+				// debug testing
+				var snapver int32 = 1
+				snapshot.SetVersion(snapver)
+				log.Debug("generating snapshot for nodeId " + nodeId)
+				snapshot.GenerateSnapshot()
+				log.Debug("chcking snapshot consistency for nodeId " + nodeId)
+				if err := snapshot.AssertSnapshotIsConsistent(); err != nil {
+					log.WithError(err).Fatalf("snapshot inconsistency: %+v\n", snapshot.Snapshot)
+				}
+			default:
+				log.Debug("no policy filter match; skipping snapshot tasks for nodeId " + nodeId)
+			}
+		}
+	}
+}
+
 func ServeEnvoyXds(config *configure.Config) {
 	xdss := NewXdsServer(config)
 	// start the xDS server
 	go xdss.RunManagementServer()
 	// Create a ticket for periodic refresh of state
-	var refreshSeconds int = 5
+	var refreshSeconds int = 30
 	refreshInterval := time.Duration(refreshSeconds)
 	refreshTicker := time.NewTicker(refreshInterval * time.Second)
 	// Create a common 'quit' channel for stopping ticker(s) as needed
@@ -165,9 +194,10 @@ func ServeEnvoyXds(config *configure.Config) {
 		for {
 			select {
 			case <- refreshTicker.C:
-				nodes := xdss.ListStatusKeys()
-				for _, node := range nodes {
-					xdss.GetNodeInfo(node)
+				xdss.ListStatusKeys()
+				for _, managedNode := range xdss.ListStatusKeys() {
+					log.Info("applying policy for Envoy node " + managedNode)
+					xdss.ApplyNodePolicy(managedNode)
 				}
 			case <- quit:
 				refreshTicker.Stop()
@@ -175,6 +205,7 @@ func ServeEnvoyXds(config *configure.Config) {
 			}
 		}
 	}()
+
 
 	<-xdss.Cb.Signal
 }

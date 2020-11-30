@@ -8,9 +8,14 @@ import (
 	pipeline "fireside/pkg/pipeline"
 )
 
-func main() {
+const (
+	runModeCa     = "ca"
+	runModeServer = "server"
+)
+
+func RunConfig() (*configure.Config, string) {
 	// Get the path of the config file from command-line flag
-        configPath, err := configure.ParseFlags()
+        configPath, runMode, err := configure.ParseFlags()
 	if err != nil { log.Fatal(err) }
 
 	// Create a new Config struct from config file inputs
@@ -21,12 +26,40 @@ func main() {
 		log.SetLevel(log.DebugLevel)
 		log.Info("Debug logging enabled")
 	}
+	return config, runMode
+}
 
+func RunModeCa(config *configure.Config) {
+	log.Debug("running RunModeCa function")
+	return
+}
+
+func RunModeServer(config *configure.Config) {
+	log.Debug("running RunModeServer function")
+	// create a data processing pipeline for events
 	go pipeline.CreateEventPipeline(config)
 
+	// serve dynamic resource configurations to Envoy nodes
 	go envoy_xds.ServeEnvoyXds(config)
 
 	cc := make(chan struct{})
 	<-cc
+
+	return
+}
+
+func main() {
+	// gather runtime configuration
+	Config, RunMode := RunConfig()
+
+	// run in the selected mode
+	switch RunMode {
+	case runModeCa:
+		RunModeCa(Config)
+	case runModeServer:
+		RunModeServer(Config)
+	}
+
+	// exit with a clean return code
 	os.Exit(0)
 }
