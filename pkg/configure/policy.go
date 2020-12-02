@@ -97,11 +97,35 @@ type EnvoyRuntime struct {
 }
 
 type EnvoySecret struct {
-    CaFilePath    string `yaml:"ca_file_path"`
-    CaSecretName  string `yaml:"ca_secret_name"`
-    CrtFilePath   string `yaml:"crt_file_path"`
-    CrtSecretName string `yaml:"crt_secret_name"`
-    KeyFilePath   string `yaml:"key_file_path"`
+    Name      string                     `yaml:"name"`
+    Type      string                     `yaml:"type"`
+    Ca        EnvoySecretTlsCa           `yaml:"ca"`
+    Crt       EnvoySecretTlsCrt          `yaml:"crt"`
+    Key       EnvoySecretTlsKey          `yaml:"key"`
+    Provision EnvoySecretProvisionConfig `yaml:"provision"`
+}
+
+type EnvoySecretProvisionConfig struct {
+    CreateIfAbsent bool `yaml:"create_if_absent"`
+    ForceRecreate  bool `yaml:"force_recreate"`
+}
+
+type EnvoySecretTlsCa struct {
+    Name string `yaml:"name"`
+}
+
+type EnvoySecretTlsCrt struct {
+    CommonName    string `yaml:"common_name"`
+    FileName      string `yaml:"file_name"`
+    Locality      string `yaml:"locality"`
+    Organization  string `yaml:"organization"`
+    PostalCode    string `yaml:"postal_code"`
+    Province      string `yaml:"province"`
+    StreetAddress string `yaml:"street_address"`
+}
+
+type EnvoySecretTlsKey struct {
+    FileName string `yaml:"file_name"`
 }
 
 type EnvoyVirtualHost struct {

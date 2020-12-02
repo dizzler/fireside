@@ -8,7 +8,6 @@ import (
     "gopkg.in/yaml.v2"
 )
 
-
 // Config struct for webapp config
 type Config struct {
 
