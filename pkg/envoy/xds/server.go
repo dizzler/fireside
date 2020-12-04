@@ -151,17 +151,35 @@ func (xc *XdsServer) ApplyNodePolicy(nodeId string) {
             // apply the first policy match for the specified nodeId
             switch {
             case (policyFilter.Key == configure.Filterkey_Node) && (policyFilter.Value == nodeId):
-                snapshot := NewEnvoySnapshot(xc.Cache, &envoyPolicy.Config)
+		// create / get TLS CA, certs and keys based on policy configs
+		log.Info("Creating TLS Trust Domains for Envoy TLS 'secrets'")
+		trustDomains, err := MakeTlsTrustDomains(envoyPolicy.Config.Secrets)
+		if err != nil {
+                    log.WithError(err).Fatal("failed to create TLS Trust Domains")
+		}
+
+                // create a new snapshot of aggregated resources for the Envoy node
+                snapshot := NewEnvoySnapshot(xc.Cache, &envoyPolicy.Config, trustDomains)
                 snapshot.SetNodeId(nodeId)
                 // debug testing
                 var snapver int32 = 1
                 snapshot.SetVersion(snapver)
+
+		// generate the resource definitions used in the Envoy node snapshot
                 log.Debug("generating snapshot for nodeId " + nodeId)
                 snapshot.GenerateSnapshot()
-                log.Debug("chcking snapshot consistency for nodeId " + nodeId)
+
+		// check snapshot consistency before applying in order to ensure resource
+		// dependencies are met within the snapshot
+                log.Debug("checking snapshot consistency for nodeId " + nodeId)
                 if err := snapshot.AssertSnapshotIsConsistent(); err != nil {
                     log.WithError(err).Fatalf("snapshot inconsistency: %+v\n", snapshot.Snapshot)
                 }
+
+		// apply the snapshot for the node by updating the snapshot cache
+		if err := snapshot.ApplySnapshot(); err != nil {
+                    log.WithError(err).Errorf("failed to set snapshot for nodeId %s : version %s", snapshot.NodeId, snapshot.Version)
+		}
             default:
                 log.Debug("no policy filter match; skipping snapshot tasks for nodeId " + nodeId)
             }

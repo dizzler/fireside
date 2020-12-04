@@ -99,6 +99,7 @@ type EnvoyRuntime struct {
 type EnvoySecret struct {
     Name      string                     `yaml:"name"`
     Type      string                     `yaml:"type"`
+    BaseDir   string                     `yaml:"base_dir"`
     Ca        EnvoySecretTlsCa           `yaml:"ca"`
     Crt       EnvoySecretTlsCrt          `yaml:"crt"`
     Key       EnvoySecretTlsKey          `yaml:"key"`
@@ -115,13 +116,15 @@ type EnvoySecretTlsCa struct {
 }
 
 type EnvoySecretTlsCrt struct {
-    CommonName    string `yaml:"common_name"`
-    FileName      string `yaml:"file_name"`
-    Locality      string `yaml:"locality"`
-    Organization  string `yaml:"organization"`
-    PostalCode    string `yaml:"postal_code"`
-    Province      string `yaml:"province"`
-    StreetAddress string `yaml:"street_address"`
+    CommonName    string   `yaml:"common_name"`
+    Country       string   `yaml:"country"`
+    FileName      string   `yaml:"file_name"`
+    IpAddresses   []string `yaml:"ip_addresses"`
+    Locality      string   `yaml:"locality"`
+    Organization  string   `yaml:"organization"`
+    PostalCode    string   `yaml:"postal_code"`
+    Province      string   `yaml:"province"`
+    StreetAddress string   `yaml:"street_address"`
 }
 
 type EnvoySecretTlsKey struct {

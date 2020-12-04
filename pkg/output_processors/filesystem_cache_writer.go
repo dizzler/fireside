@@ -81,7 +81,7 @@ func NameCacheFile(baseDir string, filePrefix string, fileSuffix string) (string
 
 // Create the active cache file and return its details as pointers
 func OpenCacheFile(baseDir string, filePrefix string) (string, *os.File, *bufio.Writer, error) {
-	p := NameCacheFile(baseDir, filePrefix, OutputSuffix)
+	p := NameCacheFile(baseDir, filePrefix, configure.OutputSuffix)
 	var f *os.File
 	var b *bufio.Writer
 

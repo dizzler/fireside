@@ -1,8 +1,6 @@
 package fireside
 
 import (
-    "bytes"
-    "io/ioutil"
     "time"
 
     configure "fireside/pkg/configure"
@@ -20,7 +18,7 @@ import (
     hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
     router "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
     tcp "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/tcp_proxy/v3"
-    auth "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
+    tlsauth "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
     runtime "github.com/envoyproxy/go-control-plane/envoy/service/runtime/v3"
     types "github.com/envoyproxy/go-control-plane/pkg/cache/types"
     "github.com/envoyproxy/go-control-plane/pkg/resource/v3"
@@ -342,46 +340,39 @@ func MakeRuntime(config *configure.EnvoyRuntime) *runtime.Runtime {
     }
 }
 
-// MakeTlsSecrets creates all Envoy secrets specified in policy config, where a
-// separate tls.TlsTrustDomain is created for each signing CA and its associated
-// client and server certificates/keys.
-func MakeTlsSecrets(configs []*configure.EnvoySecret) ([]*types.Resource, error) {
+// MakeTlsSecrets creates all Envoy secrets specified in policy config
+// via a lookup to a tls.TlsTrustDomain
+func MakeTlsSecrets(trustDomains []*tls.TlsTrustDomain, secrets []configure.EnvoySecret) ([]types.Resource, error) {
     var resources []types.Resource
-    for _, secretCfg := range configs {
-        // create a new TlsTrustDomain for each CA signing cert/secret
-        if secretCfg.Type == configure.SecretTypeTlsCa {
-            log.Debugf("creating TLS CA domain for Envoy secret config %s", secretCfg.Name)
-            if tlsDomain, err := tls.NewTlsTrustDomain(secretCfg); err != nil {
-                log.WithError(err).Fatal("failed to created NewTlsTrustDomain for Envoy secret : " + secretCfg.Name)
-            }
-            log.Debugf("creating Envoy secret config %s", secretCfg.Name)
-            caBytes := tlsDomain.GetCaBytes()
-            caSecret := MakeTlsCaSecret(secretCfg.Name, caBytes)
-            resources = append(resources, caSecret)
-            // use a nested for loop to sign client and server certs
-            // with the key from the created CA
-            for element, crtSecretCfg := range configs {
-                // generate and/or get certificate and key data for clients
-                // and servers associated with the created CA
-                if crtSecretCfg.Ca == secretCfg.Ca {
-                    switch crtSecretCfg.Type {
-                    case configure.SecretTypeTlsCa:
-                        log.Debugf("skipping Envoy secret config for TLS CA %s ; secret already configured", crtSecretCfg.Name)
-                    case configure.SecretTypeTlsClient:
-                        log.Debugf("creating Envoy secret config for TLS Client %s", crtSecretCfg.Name)
-                        clientName, clientBytes, keyBytes, err := tlsDomain.GetClientBytes(element, crtSecretCfg)
-                        if err != nil { return err }
-                        clientSecret := MakeTlsCrtSecret(clientName, clientBytes, keyBytes)
-                        resources = append(resources, clientSecret)
-                    case configure.SecretTypeTlsServer:
-                        log.Debugf("creating Envoy secret config for TLS Server %s", crtSecretCfg.Name)
-                        serverName, serverBytes, keyBytes, err := tlsDomain.GetServerBytes(element, crtSecretCfg)
-                        if err != nil { return err }
-                        serverSecret := MakeTlsCrtSecret(serverName, serverBytes, keyBytes)
-                        resources = append(resources, serverSecret)
-                    default:
-                        log.Debugf("skipping Envoy secret config for non-TLS secret type %s", crtSecretCfg.Type)
-                    }
+    for _, trustDomain := range trustDomains {
+        log.Debugf("creating Envoy secret config %s", trustDomain.Name)
+        // use a nested for loop to sign client and server certs
+        // with the key from the created CA
+        for element, secretCfg := range secrets {
+            // get certificate and key data for clients and servers associated with the created CA
+            if secretCfg.Ca.Name == trustDomain.Name {
+                switch secretCfg.Type {
+                case configure.SecretTypeTlsCa:
+                    log.Debugf("creating Envoy secret config for TLS CA %s", secretCfg.Name)
+                    // get the bytes for the PEM encoded CA certificate for the TlsTrustDomain
+                    caBytes := trustDomain.GetCaBytes()
+                    // create an Envoy secret formatted for a CA certificate
+                    caSecret := MakeTlsCaSecret(trustDomain.Name, caBytes)
+                    resources = append(resources, caSecret)
+                case configure.SecretTypeTlsClient:
+                    log.Debugf("creating Envoy secret config for TLS Client %s", secretCfg.Name)
+                    clientName, clientBytes, keyBytes, err := trustDomain.GetClientBytes(element, &secretCfg)
+                    if err != nil { return nil, err }
+                    clientSecret := MakeTlsCrtSecret(clientName, clientBytes, keyBytes)
+                    resources = append(resources, clientSecret)
+                case configure.SecretTypeTlsServer:
+                    log.Debugf("creating Envoy secret config for TLS Server %s", secretCfg.Name)
+                    serverName, serverBytes, keyBytes, err := trustDomain.GetServerBytes(element, &secretCfg)
+                    if err != nil { return nil, err }
+                    serverSecret := MakeTlsCrtSecret(serverName, serverBytes, keyBytes)
+                    resources = append(resources, serverSecret)
+                default:
+                    log.Debugf("skipping Envoy secret config for non-TLS secret type %s", secretCfg.Type)
                 }
             }
         }
@@ -389,16 +380,69 @@ func MakeTlsSecrets(configs []*configure.EnvoySecret) ([]*types.Resource, error)
     return resources, nil
 }
 
+// MakeTlsTrustDomains creats a tls.TlsTrustDomain (struct) abject for each
+// signing CA in the list of Envoy "Secrets". Must be run before MakeTlsSecrets.
+func MakeTlsTrustDomains(secrets []configure.EnvoySecret) ([]*tls.TlsTrustDomain, error) {
+    var trustDomains []*tls.TlsTrustDomain
+    for _, secretCfg := range secrets {
+        // create a new TlsTrustDomain for each CA signing cert/secret
+        if secretCfg.Type == configure.SecretTypeTlsCa {
+            log.Debugf("creating TLS CA domain for Envoy secret config %s", secretCfg.Name)
+            trustDomain, err := tls.NewTlsTrustDomain(&secretCfg)
+            if err != nil {
+                log.WithError(err).Fatal("failed to created NewTlsTrustDomain for Envoy secret : " + secretCfg.Name)
+            }
+            // create the CA certificate and key and add as attributes of the TlsTrustDomain
+            trustDomain.NewTlsCa(&secretCfg)
+            trustDomains = append(trustDomains, trustDomain)
+            if trust_issues := MakeTlsTrusts(secrets, trustDomain); trust_issues != nil {
+                log.WithError(err).Fatal("failed to MakeTlsTrusts for TlsTrustDomain : " + trustDomain.Name)
+            }
+        }
+    }
+    return trustDomains, nil
+}
+
+// MakeTlsTrusts creates certificates and keys for clients and servers in the
+// same TlsTrustDomain / signed by the same CA.
+func MakeTlsTrusts(secrets []configure.EnvoySecret, td *tls.TlsTrustDomain) error {
+    // use a nested for loop to sign client and server certs
+    // with the key from the created CA for the given TlsTrustDomain
+    for _, secretCfg := range secrets {
+        // generate and/or get certificate and key data for clients
+        // and servers associated with the created CA
+        if secretCfg.Ca.Name == td.Name {
+            switch secretCfg.Type {
+            case configure.SecretTypeTlsCa:
+                log.Debugf("skipping task for TLS CA %s ; crt/key already configured", secretCfg.Name)
+            case configure.SecretTypeTlsClient:
+                // create the Client certificate and key by signing with the
+                // CA key for the TlsTrustDomain ; add Client data as an element
+                // within the "Clients" attribute of the TlsTrustDomain
+                td.NewTlsClient(&secretCfg)
+            case configure.SecretTypeTlsServer:
+                // create the Server certificate and key by signing with the
+                // CA key for the TlsTrustDomain ; add Server data as an element
+                // within the "Servers" attribute of the TlsTrustDomain
+                td.NewTlsServer(&secretCfg)
+            default:
+                log.Debugf("skipping TLS cert creation for non-TLS secret type %s", secretCfg.Type)
+            }
+        } else {
+            log.Debugf("skipping task for TTD = %s : CA = %s : SecretCfg = %s", secretCfg.Name, secretCfg.Ca.Name, td.Name)
+        }
+    }
+    return nil
+}
+
 // MakeSecret generates an Envoy secret config for a Certificate Authority (CA) certificate
-func MakeTlsCaSecret(caName string, caChain bytes.Buffer) *auth.Secret {
-    return *auth.Secret{
-        {
-            Name: caName,
-            Type: &auth.Secret_ValidationContext{
-                ValidationContext: &auth.CertificateValidationContext{
-                    TrustedCa: &core.DataSource{
-                        Specifier: &core.DataSource_InlineBytes{InlineBytes: []byte(caChain)},
-                    },
+func MakeTlsCaSecret(caName string, caChain []byte) *tlsauth.Secret {
+    return &tlsauth.Secret{
+        Name: caName,
+        Type: &tlsauth.Secret_ValidationContext{
+            ValidationContext: &tlsauth.CertificateValidationContext{
+                TrustedCa: &core.DataSource{
+                    Specifier: &core.DataSource_InlineBytes{InlineBytes: []byte(caChain)},
                 },
             },
         },
@@ -406,18 +450,16 @@ func MakeTlsCaSecret(caName string, caChain bytes.Buffer) *auth.Secret {
 }
 
 // MakeTlsCrtSecret creates an Envoy secret config for a client||server TLS certificate
-func MakeTlsCrtSecret(pemName string, pemChain bytes.Buffer, pemKey bytes.Buffer) *auth.Secret {
-    return *auth.Secret{
-        {
-            Name: pemName,
-            Type: &auth.Secret_TlsCertificate{
-                TlsCertificate: &auth.TlsCertificate{
-                    CertificateChain: &core.DataSource{
-                        Specifier: &core.DataSource_InlineBytes{InlineBytes: []byte(pemChain)},
-                    },
-                    PrivateKey: &core.DataSource{
-                        Specifier: &core.DataSource_InlineBytes{InlineBytes: []byte(pemKey)},
-                    },
+func MakeTlsCrtSecret(pemName string, pemChain []byte, pemKey []byte) *tlsauth.Secret {
+    return &tlsauth.Secret{
+        Name: pemName,
+        Type: &tlsauth.Secret_TlsCertificate{
+            TlsCertificate: &tlsauth.TlsCertificate{
+                CertificateChain: &core.DataSource{
+                    Specifier: &core.DataSource_InlineBytes{InlineBytes: []byte(pemChain)},
+                },
+                PrivateKey: &core.DataSource{
+                    Specifier: &core.DataSource_InlineBytes{InlineBytes: []byte(pemKey)},
                 },
             },
         },
