@@ -26,6 +26,13 @@ node:
 
 static_resources:
   clusters:
+    - name: 'test123-accesslog-cluster'
+      connect_timeout: 2s
+      hosts:
+        - socket_address:
+            address: 127.0.0.1
+            port_value: 5446
+      http2_protocol_options: {}
     - name: xds_cluster
       connect_timeout: 2s
       http2_protocol_options: {}

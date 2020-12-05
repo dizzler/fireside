@@ -120,7 +120,7 @@ func ParseFlags() (string, string, error) {
 
     // Setup a CLI flag called "-config" to allow users
     // to supply the configuration file
-    flag.StringVar(&configPath, "config", "/etc/fireside/config.yml", "Filesystem path of bootstrap config file")
+    flag.StringVar(&configPath, "config", "/etc/fireside/config.yaml", "Filesystem path of bootstrap config file")
 
     // Setup a CLI flag called "-mode" in order to allow users to
     // change the operating / running "mode" for the fireside executable

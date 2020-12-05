@@ -38,16 +38,11 @@ policies:
           config_type: 'envoy.access_loggers.http_grpc'
           log_name: 'test123-envoy-accesslog'
       clusters:
-        - name: 'test123-accesslog-cluster'
-          mode: 'ads'
         - name: 'test123-http-cluster'
           mode: 'ads'
         - name: 'test123-tcp-cluster'
           mode: 'ads'
       endpoints:
-        - cluster_name: 'test123-accesslog-cluster'
-          host: '127.0.0.1'
-          port: 5446
         - cluster_name: 'test123-http-cluster'
           host: '127.0.0.1'
           port: 180
@@ -72,7 +67,7 @@ policies:
           config_type: 'envoy.filters.network.http_connection_manager'
           config: {}
           mode: 'ads'
-          stat_prefix: 'http'
+          stat_prefix: 'http123'
           upstream_target: 'test123-http-default-route'
         - name: 'test123-http-router'
           type: 'http'
@@ -83,7 +78,7 @@ policies:
           config:
             dynamic_stats: false
           mode: 'ads'
-          stat_prefix: ''
+          stat_prefix: 'httprouter123'
           upstream_target: ''
         - name: 'test123-tcp-proxy'
           type: 'network'
@@ -94,7 +89,7 @@ policies:
           config:
             cluster_name: 'test123-tcp-cluster'
           mode: 'ads'
-          stat_prefix: ''
+          stat_prefix: 'tcpproxy123'
           upstream_target: 'test123-tcp-cluster'
       listeners:
         - name: 'test123-http-listener'
@@ -116,11 +111,68 @@ policies:
       runtimes:
         - name: 'test123-runtime-1'
       secrets:
-        - ca_file_path: '/etc/fireside/tls/ca.pem'
-          ca_secret_name: 'fireside-ca'
-          crt_file_path: '/etc/fireside/tls/tls.crt'
-          crt_secret_name: 'fireside-crt'
-          key_file_path: '/etc/fireside/tls/tls.key'
+        - name: 'fireside-ca1'
+          type: 'tls-ca'
+          base_dir: '/etc/fireside/tls/fireside-ca1'
+          ca:
+            name: 'fireside-ca1'
+          crt:
+            common_name: 'fireside-tls-ca'
+            country: 'US'
+            file_name: 'ca.crt'
+            ip_addresses: []
+            locality: 'San Francisco'
+            organization: 'FireEye'
+            postal_code: ''
+            province: ''
+            street_address: ''
+          key:
+            file_name: 'ca.key'
+          provision:
+            create_if_absent: true
+            force_recreate: false
+        - name: 'fireside-client-crt'
+          type: 'tls-client'
+          base_dir: '/etc/fireside/tls/fireside-ca1-client1'
+          ca:
+            name: 'fireside-ca1'
+          crt:
+            common_name: 'fireside-tls-client'
+            country: 'US'
+            file_name: 'client.crt'
+            ip_addresses:
+              - '127.0.0.1'
+            locality: 'San Francisco'
+            organization: 'FireEye'
+            postal_code: ''
+            province: ''
+            street_address: ''
+          key:
+            file_name: 'client.key'
+          provision:
+            create_if_absent: true
+            force_recreate: false
+        - name: 'fireside-server-crt'
+          type: 'tls-server'
+          base_dir: '/etc/fireside/tls/fireside-ca1-server1'
+          ca:
+            name: 'fireside-ca1'
+          crt:
+            common_name: 'fireside-tls-server'
+            country: 'US'
+            file_name: 'server.crt'
+            ip_addresses:
+              - '127.0.0.1'
+            locallity: 'San Francisco'
+            organization: 'FireEye'
+            postal_code: ''
+            province: ''
+            street_address: ''
+          key:
+            file_name: 'erver.key'
+          provision:
+            create_if_absent: true
+            force_recreate: false
       virtual_hosts:
         - name: 'test123-http-virthost1'
           cluster_name: 'test123-http-cluster'
