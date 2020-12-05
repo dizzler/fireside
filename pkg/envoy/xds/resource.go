@@ -1,6 +1,8 @@
 package fireside
 
 import (
+    "errors"
+    "fmt"
     "time"
 
     configure "fireside/pkg/configure"
@@ -342,39 +344,42 @@ func MakeRuntime(config *configure.EnvoyRuntime) *runtime.Runtime {
 
 // MakeTlsSecrets creates all Envoy secrets specified in policy config
 // via a lookup to a tls.TlsTrustDomain
-func MakeTlsSecrets(trustDomains []*tls.TlsTrustDomain, secrets []configure.EnvoySecret) ([]types.Resource, error) {
+func MakeTlsSecrets(trustDomains []*tls.TlsTrustDomain) ([]types.Resource, error) {
     var resources []types.Resource
     for _, trustDomain := range trustDomains {
         log.Debugf("creating Envoy secret config %s", trustDomain.Name)
-        // use a nested for loop to sign client and server certs
-        // with the key from the created CA
-        for element, secretCfg := range secrets {
-            // get certificate and key data for clients and servers associated with the created CA
-            if secretCfg.Ca.Name == trustDomain.Name {
-                switch secretCfg.Type {
-                case configure.SecretTypeTlsCa:
-                    log.Debugf("creating Envoy secret config for TLS CA %s", secretCfg.Name)
-                    // get the bytes for the PEM encoded CA certificate for the TlsTrustDomain
-                    caBytes := trustDomain.GetCaBytes()
-                    // create an Envoy secret formatted for a CA certificate
-                    caSecret := MakeTlsCaSecret(trustDomain.Name, caBytes)
-                    resources = append(resources, caSecret)
-                case configure.SecretTypeTlsClient:
-                    log.Debugf("creating Envoy secret config for TLS Client %s", secretCfg.Name)
-                    clientName, clientBytes, keyBytes, err := trustDomain.GetClientBytes(element, &secretCfg)
-                    if err != nil { return nil, err }
-                    clientSecret := MakeTlsCrtSecret(clientName, clientBytes, keyBytes)
-                    resources = append(resources, clientSecret)
-                case configure.SecretTypeTlsServer:
-                    log.Debugf("creating Envoy secret config for TLS Server %s", secretCfg.Name)
-                    serverName, serverBytes, keyBytes, err := trustDomain.GetServerBytes(element, &secretCfg)
-                    if err != nil { return nil, err }
-                    serverSecret := MakeTlsCrtSecret(serverName, serverBytes, keyBytes)
-                    resources = append(resources, serverSecret)
-                default:
-                    log.Debugf("skipping Envoy secret config for non-TLS secret type %s", secretCfg.Type)
-                }
+        // get certificate data for the TlsTrustDomain's signing CA
+        log.Debugf("creating Envoy secret config for TLS CA %s", trustDomain.Name)
+        // get the bytes for the PEM encoded CA certificate for the TlsTrustDomain
+        caBytes := trustDomain.GetCaBytes()
+        // create an Envoy secret formatted for a CA certificate
+        caSecret := MakeTlsCaSecret(trustDomain.Name, caBytes)
+        resources = append(resources, caSecret)
+        // get certificate and key data for Clients associated with the TlsTrustDomain
+        for element, trustClient := range trustDomain.Clients {
+            if trustClient.Type != configure.SecretTypeTlsClient {
+                return nil, errors.New(
+                    fmt.Sprintf("cannot create new Client TLS secret for invalid Secret:Type ...", trustClient.Name, trustClient.Type),
+                )
             }
+            log.Debugf("creating Envoy secret config for TLS Client %s", trustClient.Name)
+            clientName, clientBytes, keyBytes, err := trustDomain.GetClientBytes(element)
+            if err != nil { return nil, err }
+            clientSecret := MakeTlsCrtSecret(clientName, clientBytes, keyBytes)
+            resources = append(resources, clientSecret)
+        }
+        // get certificate and key data for Servers associated with the TlsTrustDomain
+        for element, trustServer := range trustDomain.Servers {
+            if trustServer.Type != configure.SecretTypeTlsServer {
+                return nil, errors.New(
+                    fmt.Sprintf("cannot create new Server TLS secret for invalid Secret:Type ...", trustServer.Name, trustServer.Type),
+                )
+            }
+            log.Debugf("creating Envoy secret config for TLS Server %s", trustServer.Name)
+            serverName, serverBytes, keyBytes, err := trustDomain.GetServerBytes(element)
+            if err != nil { return nil, err }
+            serverSecret := MakeTlsCrtSecret(serverName, serverBytes, keyBytes)
+            resources = append(resources, serverSecret)
         }
     }
     return resources, nil

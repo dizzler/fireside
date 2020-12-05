@@ -107,9 +107,9 @@ func (ns *EnvoySnapshot) GenerateSnapshot() {
         runtimes = append(runtimes, runtime)
     }
     // create Envoy secrets for TLS certs used in downstream and/or upstream connections
-    secrets, err := MakeTlsSecrets(ns.TlsTrustDomains, policy.Secrets)
+    secrets, err := MakeTlsSecrets(ns.TlsTrustDomains)
     if err != nil {
-        log.WithError(err).Fatal("failed to MakeTlsSecrets from policy config")
+        log.WithError(err).Fatal("failed to MakeTlsSecrets from policy configs / TlsTrustDomains")
     }
     // create cachev3.NewSnapshot using generated resources
     ns.Snapshot = cachev3.NewSnapshot(

@@ -24,10 +24,12 @@ type TlsTrustDomain struct {
 }
 
 type TlsTrust struct {
-    Name    string
-    BaseDir string
-    Crt     *TlsTrustCrt
-    Key     *TlsTrustKey
+    Name      string
+    Type      string
+    BaseDir   string
+    Crt       *TlsTrustCrt
+    Key       *TlsTrustKey
+    Provision *TlsTrustProvision
 }
 
 type TlsTrustCrt struct {
@@ -52,6 +54,11 @@ type TlsTrustKey struct {
     File string
     Key  *rsa.PrivateKey
     PEM  []byte
+}
+
+type TlsTrustProvision struct {
+    CreateIfAbsent bool
+    ForceRecreate  bool
 }
 
 // creates a new TlsTrust from secret config
@@ -90,13 +97,24 @@ func NewTlsTrust (config *configure.EnvoySecret) (*TlsTrust, error) {
     default:
         return nil, errors.New("failed to create NewTlsTrust for unsupported config Type = " + config.Type)
     }
-    tlsTrustCrt := &TlsTrustCrt{Config: tlsCrtConfig, File: config.Crt.FileName}
-    tlsTrustKey := &TlsTrustKey{File: config.Key.FileName}
+    tlsTrustCrt := &TlsTrustCrt{
+        Config: tlsCrtConfig,
+        File: config.Crt.FileName,
+    }
+    tlsTrustKey := &TlsTrustKey{
+        File: config.Key.FileName,
+    }
+    provision := &TlsTrustProvision{
+        CreateIfAbsent: config.Provision.CreateIfAbsent,
+        ForceRecreate: config.Provision.ForceRecreate,
+    }
     return &TlsTrust{
         Name: config.Name,
+	Type: config.Type,
         BaseDir: config.BaseDir,
         Crt: tlsTrustCrt,
         Key: tlsTrustKey,
+	Provision: provision,
     }, nil
 }
 
@@ -127,47 +145,25 @@ func (td *TlsTrustDomain) GetCaBytes() []byte {
 }
 
 // gets a buffer containing bytes for server certificate and key
-func (td *TlsTrustDomain) GetClientBytes(element int, secret *configure.EnvoySecret) (string, []byte, []byte, error) {
-    var (
-        rname string
-        rcrt  []byte
-        rkey  []byte
-        rerr  error
-    )
+func (td *TlsTrustDomain) GetClientBytes(element int) (string, []byte, []byte, error) {
     switch {
     case element < len(td.Clients):
         log.Debugf("getting Client PEM bytes from existing element %d in TlsTrustDomain Clients", element)
-    case element >= len(td.Clients):
-        rerr = errors.New("invalid GetClientBytes request for array element " + string(element))
+	return td.Clients[element].Name, td.Clients[element].Crt.PEM, td.Clients[element].Key.PEM, nil
+    default:
+        return "", nil, nil, errors.New("invalid GetClientBytes request for array element " + string(element))
     }
-    // retrieve Client certificate and key from TlsTrustDomain struct data
-    rname = td.Clients[element].Name
-    rcrt = td.Clients[element].Crt.PEM
-    rkey = td.Clients[element].Key.PEM
-    rerr = nil
-    return rname, rcrt, rkey, rerr
 }
 
 // gets a buffer containing bytes for server certificate and key
-func (td *TlsTrustDomain) GetServerBytes(element int, secret *configure.EnvoySecret) (string, []byte, []byte, error) {
-    var (
-        rname string
-        rcrt  []byte
-        rkey  []byte
-        rerr  error
-    )
+func (td *TlsTrustDomain) GetServerBytes(element int) (string, []byte, []byte, error) {
     switch {
     case element < len(td.Servers):
         log.Debugf("getting Server PEM bytes from existing element %d in TlsTrustDomain Servers", element)
-    case element >= len(td.Servers):
-        rerr = errors.New("invalid GetServerBytes request for array element " + string(element))
+	return td.Servers[element].Name, td.Servers[element].Crt.PEM, td.Servers[element].Key.PEM, nil
+    default:
+        return "", nil, nil, errors.New("invalid GetServerBytes request for array element " + string(element))
     }
-    // retrieve Server certificate and key from TlsTrustDomain struct data
-    rname = td.Servers[element].Name
-    rcrt = td.Servers[element].Crt.PEM
-    rkey = td.Servers[element].Key.PEM
-    rerr = nil
-    return rname, rcrt, rkey, rerr
 }
 
 // creates a new TLS CA certificate and key
