@@ -1,4 +1,4 @@
-package transformers
+package fireside
 
 import (
         "github.com/dailyburn/ratchet/data"

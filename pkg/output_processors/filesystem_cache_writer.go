@@ -1,4 +1,4 @@
-package output_processors
+package fireside
 
 import (
 	"archive/tar"
@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	configure "fireside/pkg/configure"
         log "github.com/sirupsen/logrus"
 
         "github.com/aws/aws-sdk-go/aws"
@@ -20,11 +21,6 @@ import (
         "github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/dailyburn/ratchet/data"
 	"github.com/dailyburn/ratchet/logger"
-)
-
-const (
-	ArchiveSuffix string = "tar.gz"
-	OutputSuffix  string = "out"
 )
 
 // FsCacheWriter struct provides configuration for a new filesystem cache writer.
@@ -85,7 +81,7 @@ func NameCacheFile(baseDir string, filePrefix string, fileSuffix string) (string
 
 // Create the active cache file and return its details as pointers
 func OpenCacheFile(baseDir string, filePrefix string) (string, *os.File, *bufio.Writer, error) {
-	p := NameCacheFile(baseDir, filePrefix, OutputSuffix)
+	p := NameCacheFile(baseDir, filePrefix, configure.OutputSuffix)
 	var f *os.File
 	var b *bufio.Writer
 
@@ -144,6 +140,7 @@ func RunFsCache(cacher *FsCacheWriter) {
 			case <- quit:
 				rotateTicker.Stop()
 				cleanTicker.Stop()
+				archiverTicker.Stop()
 				return
 		        }
 		}
@@ -183,7 +180,7 @@ func CleanFsCache(cacher *FsCacheWriter) {
 	for _, file := range files {
 		filePath := path.Join([]string{cacher.BaseDir, file.Name()}...)
 		// Avoid archiving data which is either (1) active OR (2) already archived
-		if filePath != cacher.ActivePath && strings.HasSuffix(filePath, OutputSuffix) {
+		if filePath != cacher.ActivePath && strings.HasSuffix(filePath, configure.OutputSuffix) {
 			log.Debug("checking cache file for archive and/or cleanup : " + filePath)
 			fileInfo, ferr := os.Stat(filePath)
 			if ferr != nil {
@@ -215,7 +212,7 @@ func CleanFsCache(cacher *FsCacheWriter) {
 func ArchiveCacheFile(cacher *FsCacheWriter, filepath string, fileinfo os.FileInfo) error {
 	log.Debug("running ArchiveCacheFile function")
 	// Generate the filepath for the archive file, based on the current time.Now()
-	acf_name := NameCacheFile(cacher.BaseDir, cacher.FilePrefix, ArchiveSuffix)
+	acf_name := NameCacheFile(cacher.BaseDir, cacher.FilePrefix, configure.ArchiveSuffix)
 	acf, err := os.OpenFile(acf_name, os.O_RDWR|os.O_CREATE, 0640)
 	defer acf.Close()
 	if err != nil { return err }

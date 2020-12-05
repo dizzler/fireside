@@ -1,7 +1,8 @@
 *~
 fireside
+example/*.json
 go/
-src/ratchet/
+ratchet/
 
 *.o
 *.exe

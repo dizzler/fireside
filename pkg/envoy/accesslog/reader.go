@@ -1,4 +1,4 @@
-package envoy_accesslog
+package fireside
 
 import (
 	"context"

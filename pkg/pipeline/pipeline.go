@@ -1,9 +1,10 @@
-package main
+package fireside
 
 import (
-        eal "envoy_accesslog"
-	outproc "output_processors"
-	transform "transformers"
+	configure "fireside/pkg/configure"
+        envoy_logs "fireside/pkg/envoy/accesslog"
+	outproc "fireside/pkg/output_processors"
+	transform "fireside/pkg/transformers"
 
         log "github.com/sirupsen/logrus"
 
@@ -16,7 +17,7 @@ var (
         outputConfig    *outproc.OutputConfig
 )
 
-func CreateEventPipeline(config *Config) {
+func CreateEventPipeline(config *configure.Config) {
         // Set the various *Config values used throughout the data processing pipeline
         awsOutputConfig = &outproc.AwsOutputConfig{
                 Region: config.Outputs.AWS.Region,
@@ -29,7 +30,7 @@ func CreateEventPipeline(config *Config) {
                 CheckCert: awsCheckCerts}
 
 	// Initialize the data extraction/input processors for pipeline
-        envoyAccesslogProc := eal.NewEnvoyAccesslogReader(config.Inputs.Envoy.Accesslog.Server.Port)
+        envoyAccesslogProc := envoy_logs.NewEnvoyAccesslogReader(config.Inputs.Envoy.Accesslog.Server.Port)
 
         // Initialize the transformation/enrichment processors for the pipeline
 	var transformerSpec string = ""

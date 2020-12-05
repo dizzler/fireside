@@ -1,4 +1,4 @@
-package output_processors
+package fireside
 
 // OutputConfig is a struct to store configuration for pipeline output processors
 type OutputConfig struct {

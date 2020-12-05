@@ -1,13 +1,12 @@
-package main
+package fireside
 
 import (
     "flag"
     "fmt"
+    log "github.com/sirupsen/logrus"
     "os"
-
     "gopkg.in/yaml.v2"
 )
-
 
 // Config struct for webapp config
 type Config struct {
@@ -20,11 +19,19 @@ type Config struct {
     Inputs struct {
 	Envoy struct {
 	    Accesslog struct {
+		// configs for the Envoy Accesslog (collector) server
 		Server struct {
 		    Host string `yaml:"host"`
 		    Port uint   `yaml:"port"`
 		} `yaml:"server"`
 	    } `yaml:"accesslog"`
+	    Xds struct {
+		// configs for the Envoy xDS (control plane) server
+		Server struct {
+		    Host string `yaml:"host"`
+		    Port uint   `yaml:"port"`
+		} `yaml:"server"`
+	    } `yaml:"xds"`
 	} `yaml:"envoy"`
     } `yaml:"inputs"`
 
@@ -61,6 +68,9 @@ type Config struct {
 	} `yaml:"cache"`
 
     } `yaml:"outputs"`
+
+    // policies to be applied to managed nodes and/or data streams
+    Policies []Policy `yaml:"policies"`
 }
 
 // NewConfig returns a new decoded Config struct
@@ -101,22 +111,38 @@ func ValidateConfigPath(path string) error {
 
 // ParseFlags will create and parse the CLI flags
 // and return the path to be used elsewhere
-func ParseFlags() (string, error) {
+func ParseFlags() (string, string, error) {
     // String that contains the configured configuration path
-    var configPath string
+    var (
+	    configPath string
+	    runMode    string
+    )
 
-    // Set up a CLI flag called "-config" to allow users
+    // Setup a CLI flag called "-config" to allow users
     // to supply the configuration file
-    flag.StringVar(&configPath, "config", "/etc/fireside/config.yml", "Filesystem path of bootstrap config file")
+    flag.StringVar(&configPath, "config", "/etc/fireside/config.yaml", "Filesystem path of bootstrap config file")
+
+    // Setup a CLI flag called "-mode" in order to allow users to
+    // change the operating / running "mode" for the fireside executable
+    flag.StringVar(&runMode, "mode", "server", "Operational mode in which to run ; set to one of: 'server', 'ca'")
 
     // Actually parse the flags
     flag.Parse()
 
     // Validate the path first
     if err := ValidateConfigPath(configPath); err != nil {
-        return "", err
+        return "", "", err
+    }
+
+    switch runMode {
+    case "ca":
+	    log.Info("running mode = ca")
+    case "server":
+	    log.Info("running mode = server")
+    default:
+	    log.Fatal("unsupported value for running 'mode' : " + runMode)
     }
 
     // Return the configuration path
-    return configPath, nil
+    return configPath, runMode, nil
 }
