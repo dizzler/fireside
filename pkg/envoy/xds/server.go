@@ -96,7 +96,14 @@ func NewXdsServer(config *configure.Config) *XdsServer {
     port := config.Inputs.Envoy.Xds.Server.Port
     srv := serverv3.NewServer(ctx, cache, cb)
 
-    return &XdsServer{Cache: cache, Cb: cb, Ctx: ctx, Policies: policies, Port: port, Server: srv}
+    return &XdsServer{
+        Cache: cache,
+        Cb: cb,
+        Ctx: ctx,
+        Policies: policies,
+        Port: port,
+        Server: srv,
+    }
 }
 
 // RunManagementServer starts an xDS server at the given port
@@ -192,7 +199,7 @@ func ServeEnvoyXds(config *configure.Config) {
     // start the xDS server
     go xdss.RunManagementServer()
     // Create a ticket for periodic refresh of state
-    var refreshSeconds int = 30
+    var refreshSeconds int = 15
     refreshInterval := time.Duration(refreshSeconds)
     refreshTicker := time.NewTicker(refreshInterval * time.Second)
     // Create a common 'quit' channel for stopping ticker(s) as needed

@@ -59,7 +59,6 @@ policies:
             name: 'test123-downstream-tls'
             type: 'downstream-tls-context'
             secrets:
-              - 'fireside-ca1'
               - 'fireside-server-crt'
         - name: 'test123-tcp-filter-chain'
           filters:

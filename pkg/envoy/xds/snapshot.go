@@ -129,4 +129,5 @@ func (ns *EnvoySnapshot) SetNodeId(nodeId string) {
 
 func (ns *EnvoySnapshot) SetVersion(snapVersion int32) {
     ns.Version = fmt.Sprintf("v%d", snapVersion)
+    log.Info("set snapshot version to " + ns.Version)
 }

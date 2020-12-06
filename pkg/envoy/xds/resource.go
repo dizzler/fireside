@@ -497,7 +497,15 @@ func MakeTcpProxyConfig(config *configure.EnvoyFilter) *tcp.TcpProxy {
 // as well as other transports such as network tap.
 func MakeTransportSocket(config *configure.EnvoyTransportSocket) *core.TransportSocket {
     genSdsSecCfg := func(secretName string) *tlsauth.SdsSecretConfig {
-        return &tlsauth.SdsSecretConfig{Name: secretName}
+        return &tlsauth.SdsSecretConfig{
+            Name: secretName,
+            SdsConfig: &core.ConfigSource{
+                ConfigSourceSpecifier: &core.ConfigSource_Ads{
+                    Ads: &core.AggregatedConfigSource{},
+                },
+                ResourceApiVersion: core.ApiVersion_V3,
+            },
+	}
     }
     genTransSock := func(anyp *anypb.Any) *core.TransportSocket {
         return &core.TransportSocket{
@@ -507,11 +515,10 @@ func MakeTransportSocket(config *configure.EnvoyTransportSocket) *core.Transport
             },
         }
     }
-    // create var(s) used in multiple switch cases
-    var sdsSecrets []*tlsauth.SdsSecretConfig
     // create the ptype config for the corresponding Type of Transport Socket config
     switch config.Type {
     case configure.TransportSocketTlsDownstream:
+        var sdsSecrets []*tlsauth.SdsSecretConfig
         for _, secretName := range config.Secrets {
              sdsSecrets = append(sdsSecrets, genSdsSecCfg(secretName))
         }
@@ -523,6 +530,7 @@ func MakeTransportSocket(config *configure.EnvoyTransportSocket) *core.Transport
         ptypeCfg := MarshalAnyPtype(tstd)
         return genTransSock(ptypeCfg)
     case configure.TransportSocketTlsUpstream:
+        var sdsSecrets []*tlsauth.SdsSecretConfig
         for _, secretName := range config.Secrets {
              sdsSecrets = append(sdsSecrets, genSdsSecCfg(secretName))
         }
