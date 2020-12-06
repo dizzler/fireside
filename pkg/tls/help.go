@@ -9,6 +9,26 @@ import (
     "os"
 )
 
+// encodes an X509 certificate in PEM format and returns the data as a byte array
+func TlsEncodeCrt(caBytes []byte) []byte {
+    caPem := new(bytes.Buffer)
+    pem.Encode(caPem, &pem.Block{
+        Type:  "CERTIFICATE",
+        Bytes: caBytes,
+    })
+    return caPem.Bytes()
+}
+
+func TlsEncodePrivKey(privKey *rsa.PrivateKey) []byte {
+    privKeyPem := new(bytes.Buffer)
+    // PEM encode the private key
+    pem.Encode(privKeyPem, &pem.Block{
+        Type:  "RSA PRIVATE KEY",
+        Bytes: x509.MarshalPKCS1PrivateKey(privKey),
+    })
+    return privKeyPem.Bytes()
+}
+
 // delete a given file
 func TlsFileDelete(filepath string) error {
     if TlsFileExists(filepath) {
@@ -38,61 +58,28 @@ func TlsFileRead(filepath string) ([]byte, error) {
     }
 }
 
-// encodes an X509 certificate in PEM format and returns the data as a byte array
-func TlsEncodeCrt(caBytes []byte) []byte {
-    caPem := new(bytes.Buffer)
-    pem.Encode(caPem, &pem.Block{
-        Type:  "CERTIFICATE",
-        Bytes: caBytes,
-    })
-    return caPem.Bytes()
+// writes TLS bytes to file / disk
+func TlsFileWrite(basedir string, filename string, data []byte, mode os.FileMode) error {
+    // make sure the directory exists before writing file
+    if err := TlsMkDir(basedir); err != nil {
+        return err
+    }
+    // write the file
+    filepath := basedir + "/" + filename
+    if err := ioutil.WriteFile(filepath, data, mode); err != nil {
+        return err
+    }
+    return nil
 }
 
-func TlsEncodePrivKey(privKey *rsa.PrivateKey) []byte {
-    privKeyPem := new(bytes.Buffer)
-    // PEM encode the private key
-    pem.Encode(privKeyPem, &pem.Block{
-        Type:  "RSA PRIVATE KEY",
-        Bytes: x509.MarshalPKCS1PrivateKey(privKey),
-    })
-    return privKeyPem.Bytes()
-}
-
-/*
-func GetTlsPem(config *configure.EnvoySecret) (bytes.Buffer, bytes.Buffer, error) {
-    // created a nested function for re-use within switch
-    mkPem := func() (bytes.Buffer, bytes.Buffer, error) {
-            if crtData, keyData, err := NewTlsPem(config); err != nil {
-                return nil, nil, err
-            }
-            return crtData, keyData, nil
-    }
-    // get or create TLS cert and key, using existing files if allowed/present
-    switch {
-    case !TlsFileExists(config.Ca.FilePath):
-        return nil, nil, errors.New("cannot GetTlsPem because CA cert does not exist at path " + config.Ca.FilePath)
-    case TlsFileExists(config.Crt.FilePath) && TlsFileExists(config.Key.FilePath):
-        if config.Provision.ForceRecreate {
-            mkPem()
-        } else {
-            if crtData, err := TlsFileRead(config.Crt.FilePath); err != nil {
-                return nil, nil, err
-            }
-            if keyData, err := TlsFileRead(config.Key.FilePath); err != nil {
-                return nil, nil, err
-            }
-            return crtData, keyData, nil
+// makes a specified directory if it does not exist already
+func TlsMkDir(dir string) error {
+    _, err := os.Stat(dir)
+    if os.IsNotExist(err) {
+        // create the directory
+        if merr := os.MkdirAll(dir, 0750); merr != nil {
+            return merr
         }
-    case !TlsFileExists(config.Crt.FilePath) && !TlsFileExists(config.Key.FilePath):
-        if config.Provision.CreateIfAbsent {
-            mkPem()
-        } else {
-            return nil, nil, errors.New("cannot create secret : " + config.Name)
-        }
-    default:
-        TlsFileDelete(config.Crt.FilePath)
-        TlsFileDelete(config.Key.FilePath)
-        mkPem()
     }
+    return nil
 }
-*/

@@ -40,22 +40,31 @@ policies:
       clusters:
         - name: 'test123-http-cluster'
           mode: 'ads'
+          transport_socket: {}
         - name: 'test123-tcp-cluster'
           mode: 'ads'
+          transport_socket: {}
       endpoints:
         - cluster_name: 'test123-http-cluster'
           host: '127.0.0.1'
-          port: 180
+          port: 8443
         - cluster_name: 'test123-tcp-cluster'
           host: '127.0.0.1'
-          port: 18000
+          port: 3306
       filter_chains:
         - name: 'test123-http-filter-chain'
           filters:
             - 'test123-http-conn-mgr'
+          transport_socket:
+            name: 'test123-downstream-tls'
+            type: 'downstream-tls-context'
+            secrets:
+              - 'fireside-ca1'
+              - 'fireside-server-crt'
         - name: 'test123-tcp-filter-chain'
           filters:
             - 'test123-tcp-proxy'
+          transport_socket: {}
       filters:
         - name: 'test123-http-conn-mgr'
           type: 'network'
@@ -95,13 +104,13 @@ policies:
         - name: 'test123-http-listener'
           type: 'http'
           host: '127.0.0.1'
-          port: 80
+          port: 443
           filter_chains:
             - 'test123-http-filter-chain'
         - name: 'test123-tcp-listener'
           type: 'tcp'
           host: '127.0.0.1'
-          port: 8000
+          port: 3305
           filter_chains:
             - 'test123-tcp-filter-chain'
       route_configs:
@@ -113,7 +122,7 @@ policies:
       secrets:
         - name: 'fireside-ca1'
           type: 'tls-ca'
-          base_dir: '/etc/fireside/tls/fireside-ca1'
+          base_dir: '/home/ubuntu/fireside/tls/fireside-ca1'
           ca:
             name: 'fireside-ca1'
           crt:
@@ -133,7 +142,7 @@ policies:
             force_recreate: false
         - name: 'fireside-client-crt'
           type: 'tls-client'
-          base_dir: '/etc/fireside/tls/fireside-ca1-client1'
+          base_dir: '/home/ubuntu/fireside/tls/fireside-ca1-client1'
           ca:
             name: 'fireside-ca1'
           crt:
@@ -154,7 +163,7 @@ policies:
             force_recreate: false
         - name: 'fireside-server-crt'
           type: 'tls-server'
-          base_dir: '/etc/fireside/tls/fireside-ca1-server1'
+          base_dir: '/home/ubuntu/fireside/tls/fireside-ca1-server1'
           ca:
             name: 'fireside-ca1'
           crt:

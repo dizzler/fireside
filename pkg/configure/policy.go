@@ -44,8 +44,9 @@ type EnvoyAccesslogConfig struct {
 }
 
 type EnvoyCluster struct {
-    Name string `yaml:"name"`
-    Mode string `yaml:"mode"`
+    Name            string               `yaml:"name"`
+    Mode            string               `yaml:"mode"`
+    TransportSocket EnvoyTransportSocket `yaml:"transport_socket"`
 }
 
 type EnvoyEndpoint struct {
@@ -73,8 +74,9 @@ type EnvoyFilterConfig struct {
 }
 
 type EnvoyFilterChain struct {
-    Name    string   `yaml:"name"`
-    Filters []string `yaml:"filters"`
+    Name            string               `yaml:"name"`
+    Filters         []string             `yaml:"filters"`
+    TransportSocket EnvoyTransportSocket `yaml:"transport_socket"`
 }
 
 type EnvoyListener struct {
@@ -129,6 +131,12 @@ type EnvoySecretTlsCrt struct {
 
 type EnvoySecretTlsKey struct {
     FileName string `yaml:"file_name"`
+}
+
+type EnvoyTransportSocket struct {
+    Name       string   `yaml:"name"`
+    Type       string   `yaml:"type"`
+    Secrets    []string `yaml:"secrets"`
 }
 
 type EnvoyVirtualHost struct {

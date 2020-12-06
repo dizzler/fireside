@@ -105,6 +105,11 @@ func MakeAccesslogConfig(config *configure.EnvoyAccesslogConfig) *alf.AccessLog 
 
 // MakeCluster creates a cluster using either ADS or EDS.
 func MakeCluster(config *configure.EnvoyCluster) *cluster.Cluster {
+    var transportSocket *core.TransportSocket
+    if len(config.TransportSocket.Type) > 0 {
+        transportSocket = MakeTransportSocket(&config.TransportSocket)
+    }
+
     edsSource := configSource(config.Mode)
 
     connectTimeout := 5 * time.Second
@@ -115,6 +120,7 @@ func MakeCluster(config *configure.EnvoyCluster) *cluster.Cluster {
         EdsClusterConfig: &cluster.Cluster_EdsClusterConfig{
             EdsConfig: edsSource,
         },
+	TransportSocket: transportSocket,
     }
 }
 
@@ -148,8 +154,9 @@ func MakeEndpoint(config *configure.EnvoyEndpoint) *endpoint.ClusterLoadAssignme
 // for use by a given Envoy listener
 func MakeFilterChain(config *configure.EnvoyFilterChain, policy *configure.PolicyConfig) *listener.FilterChain {
     var (
-        filterList     []configure.EnvoyFilter = policy.Filters
-        networkFilters []*listener.Filter
+        filterList      []configure.EnvoyFilter = policy.Filters
+        networkFilters  []*listener.Filter
+	transportSocket *core.TransportSocket
     )
     for _, filterName := range config.Filters {
         for _, filterCfg := range filterList {
@@ -160,8 +167,12 @@ func MakeFilterChain(config *configure.EnvoyFilterChain, policy *configure.Polic
             }
         }
     }
+    if len(config.TransportSocket.Type) > 0 {
+	transportSocket = MakeTransportSocket(&config.TransportSocket)
+    }
     return &listener.FilterChain{
         Filters: networkFilters,
+	TransportSocket: transportSocket,
     }
 }
 
@@ -478,6 +489,53 @@ func MakeTcpProxyConfig(config *configure.EnvoyFilter) *tcp.TcpProxy {
             Cluster: config.UpstreamTarget,
         },
         StatPrefix: config.StatPrefix,
+    }
+}
+
+// MakeTransportSocket creates a core.TransportSocket which can be used for
+// configuring downstream and/or upstream TLS "context" (i.e. encryption)
+// as well as other transports such as network tap.
+func MakeTransportSocket(config *configure.EnvoyTransportSocket) *core.TransportSocket {
+    genSdsSecCfg := func(secretName string) *tlsauth.SdsSecretConfig {
+        return &tlsauth.SdsSecretConfig{Name: secretName}
+    }
+    genTransSock := func(anyp *anypb.Any) *core.TransportSocket {
+        return &core.TransportSocket{
+            Name: wellknown.TransportSocketTls,
+            ConfigType: &core.TransportSocket_TypedConfig{
+                TypedConfig: anyp,
+            },
+        }
+    }
+    // create var(s) used in multiple switch cases
+    var sdsSecrets []*tlsauth.SdsSecretConfig
+    // create the ptype config for the corresponding Type of Transport Socket config
+    switch config.Type {
+    case configure.TransportSocketTlsDownstream:
+        for _, secretName := range config.Secrets {
+             sdsSecrets = append(sdsSecrets, genSdsSecCfg(secretName))
+        }
+        tstd := &tlsauth.DownstreamTlsContext{
+            CommonTlsContext: &tlsauth.CommonTlsContext{
+                TlsCertificateSdsSecretConfigs: sdsSecrets,
+            },
+        }
+        ptypeCfg := MarshalAnyPtype(tstd)
+        return genTransSock(ptypeCfg)
+    case configure.TransportSocketTlsUpstream:
+        for _, secretName := range config.Secrets {
+             sdsSecrets = append(sdsSecrets, genSdsSecCfg(secretName))
+        }
+        tstu := &tlsauth.UpstreamTlsContext{
+            CommonTlsContext: &tlsauth.CommonTlsContext{
+                TlsCertificateSdsSecretConfigs: sdsSecrets,
+            },
+        }
+        ptypeCfg := MarshalAnyPtype(tstu)
+        return genTransSock(ptypeCfg)
+    default:
+        log.Fatal("cannot MakeTransportSocket for unsupported Type = " + config.Type)
+	return nil
     }
 }
 

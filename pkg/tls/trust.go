@@ -62,7 +62,7 @@ type TlsTrustProvision struct {
 }
 
 // creates a new TlsTrust from secret config
-func NewTlsTrust (config *configure.EnvoySecret) (*TlsTrust, error) {
+func NewTlsTrust(config *configure.EnvoySecret) (*TlsTrust, error) {
     var (
         ipAddressList []net.IP
         tlsCrtConfig  *TlsTrustCrtConfig
@@ -248,6 +248,49 @@ func (td *TlsTrustDomain) NewTlsClient(config *configure.EnvoySecret) error {
     // PEM encode the Client private key
     trust.Key.Key = privKey
     trust.Key.PEM = TlsEncodePrivKey(privKey)
+
+    // create a func for writing Client certificate and key to local files
+    mkMyFiles := func() {
+        if err := TlsFileWrite(trust.BaseDir, trust.Crt.File, trust.Crt.PEM, configure.FileModeCrt); err != nil {
+            log.WithError(err).Fatal("failed to write TLS certificate to file : " + trust.Crt.File)
+        }
+        if err := TlsFileWrite(trust.BaseDir, trust.Key.File, trust.Key.PEM, configure.FileModeKey); err != nil {
+            log.WithError(err).Fatal("failed to write TLS key to file : " + trust.Key.File)
+        }
+    }
+    // if enabled, save the Client certificate and key in local files
+    crtPath := trust.BaseDir + "/" + trust.Crt.File
+    crtExists := TlsFileExists(crtPath)
+    keyPath := trust.BaseDir + "/" + trust.Key.File
+    keyExists := TlsFileExists(keyPath)
+    switch {
+    case !crtExists && !keyExists:
+        log.Debugf("TLS certificate and key do not yet exist at expected file paths : %s : %s", crtPath, keyPath)
+        if trust.Provision.CreateIfAbsent {
+            mkMyFiles()
+        } else {
+            log.Debug("not writing TLS data to files as CreateIfAbsent is (bool) false")
+        }
+    case crtExists && keyExists:
+	log.Debugf("TLS certificate and key already exist at expected file paths : %s : %s", crtPath, keyPath)
+        if trust.Provision.ForceRecreate {
+            TlsFileDelete(trust.Crt.File)
+            TlsFileDelete(trust.Key.File)
+            mkMyFiles()
+        } else {
+            log.Debug("not writing TLS data to files as ForceRecreate is (bool) false")
+        }
+    default:
+        log.Error("unsupported condition for TLS certificate or key ; only one exists but the pair should be either present or absent")
+        if trust.Provision.ForceRecreate {
+            TlsFileDelete(trust.Crt.File)
+            TlsFileDelete(trust.Key.File)
+            mkMyFiles()
+        } else {
+            log.Debug("not writing TLS data to clean files as ForceRecreate is (bool) false")
+        }
+    }
+
     // append the complete TlsTrust to the list of Clients in the *TlsTrustDomain
     td.Clients = append(td.Clients, trust)
 
