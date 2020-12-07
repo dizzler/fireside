@@ -1,7 +1,6 @@
 package main
 
 import (
-    "encoding/json"
     "os"
 
     configure "fireside/pkg/configure"
@@ -26,25 +25,18 @@ func RunConfig() (*configure.Config, string) {
 
     if config.Logging.Debug {
         log.SetLevel(log.DebugLevel)
-        log.Info("Debug logging enabled")
+        log.Info("debug logging enabled")
     }
     return config, runMode
 }
 
 func RunModeCa(config *configure.Config) {
     log.Debug("running RunModeCa function")
-    log.Info("Creating TLS Trust Domains for Envoy TLS 'secrets'")
+    log.Info("creating TLS Trust Domains for Envoy TLS 'secrets'")
     for _, policy := range config.Policies {
-        tlsTrustDomain, err := envoy_xds.MakeTlsTrustDomains(policy.Config.Secrets)
+        _, err := envoy_xds.MakeTlsTrustDomains(policy.Config.Secrets)
         if err != nil {
             log.WithError(err).Fatal("failure encountered while creating TLS Trust Domain")
-        }
-        if config.Logging.Debug {
-            tddJson, merr := json.Marshal(tlsTrustDomain)
-	    if merr != nil {
-                log.WithError(merr).Fatal("failed to marshal json for TLS Trust Domain")
-            }
-            log.Debug(string(tddJson))
         }
     }
     return
@@ -74,6 +66,8 @@ func main() {
         RunModeCa(Config)
     case runModeServer:
         RunModeServer(Config)
+    default:
+        log.Fatal("unsupported value for run 'mode' = " + RunMode)
     }
 
     // exit with a clean return code

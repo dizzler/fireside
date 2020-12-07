@@ -42,7 +42,8 @@ type TlsTrustCrt struct {
 type TlsTrustCrtConfig struct {
     CommonName    string
     Country       string
-    IPaddresses   []net.IP
+    DNSNames      []string
+    IPAddresses   []net.IP
     Locality      string
     Organization  string
     PostalCode    string
@@ -87,7 +88,8 @@ func NewTlsTrust(config *configure.EnvoySecret) (*TlsTrust, error) {
         tlsCrtConfig = &TlsTrustCrtConfig{
             CommonName: config.Crt.CommonName,
             Country: config.Crt.Country,
-            IPaddresses: ipAddressList,
+	    DNSNames: config.Crt.DnsNames,
+            IPAddresses: ipAddressList,
             Locality: config.Crt.Locality,
             Organization: config.Crt.Organization,
             PostalCode: config.Crt.PostalCode,
@@ -118,6 +120,83 @@ func NewTlsTrust(config *configure.EnvoySecret) (*TlsTrust, error) {
     }, nil
 }
 
+// writes the PEM-formatted certificate to local file and, for
+// non-CA certs/trusts, write the PEM-formatted key to local file, too.
+func (tr *TlsTrust) WriteTrustFiles() error {
+    if tr.Type == configure.SecretTypeTlsCa {
+    }
+    // create a func for writing certificate and key to local files
+    writeCrtFile := func() error {
+        if err := TlsFileWrite(tr.BaseDir, tr.Crt.File, tr.Crt.PEM, configure.FileModeCrt); err != nil {
+            return err
+        }
+        return nil
+    }
+    writeKeyFile := func() error {
+        if err := TlsFileWrite(tr.BaseDir, tr.Key.File, tr.Key.PEM, configure.FileModeKey); err != nil {
+            return err
+        }
+        return nil
+    }
+    mkMyFiles := func() error {
+        if err := writeCrtFile(); err != nil { return err }
+        if tr.Type == configure.SecretTypeTlsCa {
+            log.Debug("skipping write to file task for CA key in TlsTrust = " + tr.Name)
+        } else {
+            if err := writeKeyFile(); err != nil { return err }
+        }
+        return nil
+    }
+    // if enabled, save the certificate and key in local files
+    crtPath := tr.BaseDir + "/" + tr.Crt.File
+    crtExists := TlsFileExists(crtPath)
+    keyPath := tr.BaseDir + "/" + tr.Key.File
+    keyExists := TlsFileExists(keyPath)
+    switch {
+    case !crtExists && !keyExists:
+        log.Debugf("TLS certificate and key do not yet exist at expected file paths : %s : %s", crtPath, keyPath)
+        if tr.Provision.CreateIfAbsent {
+            if err := mkMyFiles(); err != nil { return err }
+        } else {
+            log.Debug("not writing TLS data to files as CreateIfAbsent is (bool) false")
+        }
+    case crtExists && keyExists:
+	log.Debugf("TLS certificate and key already exist at expected file paths : %s : %s", crtPath, keyPath)
+        if tr.Provision.ForceRecreate {
+            log.Debugf("re-creating TLS certificate and key : %s : %s", crtPath, keyPath)
+            TlsFileDelete(tr.Crt.File)
+            TlsFileDelete(tr.Key.File)
+            if err := mkMyFiles(); err != nil { return err }
+        } else {
+            log.Debug("not writing TLS data to files as ForceRecreate is (bool) false")
+        }
+    case crtExists && !keyExists:
+	log.Debugf("TLS certificate already exists at expected file path : %s", crtPath)
+	log.Debugf("TLS key does not exist at expected file path : %s", keyPath)
+        if tr.Provision.ForceRecreate {
+            log.Debugf("re-creating TLS certificate and key : %s : %s", crtPath, keyPath)
+            TlsFileDelete(tr.Crt.File)
+            TlsFileDelete(tr.Key.File)
+            if err := mkMyFiles(); err != nil { return err }
+        } else {
+            log.Debug("not writing TLS data to files as ForceRecreate is (bool) false")
+        }
+    default:
+        log.Error("unsupported condition for TLS certificate or key ; only one exists but the pair should be either present or absent")
+        if tr.Provision.ForceRecreate {
+            log.Debugf("purging and re-creating TLS certificate and key : %s : %s", crtPath, keyPath)
+            TlsFileDelete(tr.Crt.File)
+            TlsFileDelete(tr.Key.File)
+            if err := mkMyFiles(); err != nil { return err }
+        } else {
+            log.Debug("not writing TLS data to clean files as ForceRecreate is (bool) false")
+        }
+    }
+
+    return nil
+}
+
+
 // creates a new TlsTrustDomain for a given signing CA
 func NewTlsTrustDomain(config *configure.EnvoySecret) (*TlsTrustDomain, error) {
     var (
@@ -127,9 +206,15 @@ func NewTlsTrustDomain(config *configure.EnvoySecret) (*TlsTrustDomain, error) {
     if config.Type != configure.SecretTypeTlsCa {
         return nil, errors.New("cannot create NewTlsTrustDomain for secret type = " + config.Type)
     }
+    // create new TlsTrust for to hold data for CA certificate and key
     if ca, err = NewTlsTrust(config); err != nil {
 	return nil, errors.New("failed to create NewTlsTrust for CA secret = " + config.Name)
     }
+    // write CA certificate to local file, if configured
+    if err := ca.WriteTrustFiles(); err != nil {
+        return nil, err
+    }
+    // return a pointer to the new TlsTrustDomain struct
     return &TlsTrustDomain{
         Name: config.Name,
         CA: ca,
@@ -225,7 +310,8 @@ func (td *TlsTrustDomain) NewTlsClient(config *configure.EnvoySecret) error {
             StreetAddress: []string{trust.Crt.Config.StreetAddress},
             PostalCode:    []string{trust.Crt.Config.PostalCode},
         },
-        IPAddresses:  trust.Crt.Config.IPaddresses,
+	DNSNames:     trust.Crt.Config.DNSNames,
+        IPAddresses:  trust.Crt.Config.IPAddresses,
         NotBefore:    time.Now(),
         NotAfter:     time.Now().AddDate(10, 0, 0),
         SubjectKeyId: []byte{1, 2, 3, 4, 6},
@@ -249,47 +335,8 @@ func (td *TlsTrustDomain) NewTlsClient(config *configure.EnvoySecret) error {
     trust.Key.Key = privKey
     trust.Key.PEM = TlsEncodePrivKey(privKey)
 
-    // create a func for writing Client certificate and key to local files
-    mkMyFiles := func() {
-        if err := TlsFileWrite(trust.BaseDir, trust.Crt.File, trust.Crt.PEM, configure.FileModeCrt); err != nil {
-            log.WithError(err).Fatal("failed to write TLS certificate to file : " + trust.Crt.File)
-        }
-        if err := TlsFileWrite(trust.BaseDir, trust.Key.File, trust.Key.PEM, configure.FileModeKey); err != nil {
-            log.WithError(err).Fatal("failed to write TLS key to file : " + trust.Key.File)
-        }
-    }
-    // if enabled, save the Client certificate and key in local files
-    crtPath := trust.BaseDir + "/" + trust.Crt.File
-    crtExists := TlsFileExists(crtPath)
-    keyPath := trust.BaseDir + "/" + trust.Key.File
-    keyExists := TlsFileExists(keyPath)
-    switch {
-    case !crtExists && !keyExists:
-        log.Debugf("TLS certificate and key do not yet exist at expected file paths : %s : %s", crtPath, keyPath)
-        if trust.Provision.CreateIfAbsent {
-            mkMyFiles()
-        } else {
-            log.Debug("not writing TLS data to files as CreateIfAbsent is (bool) false")
-        }
-    case crtExists && keyExists:
-	log.Debugf("TLS certificate and key already exist at expected file paths : %s : %s", crtPath, keyPath)
-        if trust.Provision.ForceRecreate {
-            TlsFileDelete(trust.Crt.File)
-            TlsFileDelete(trust.Key.File)
-            mkMyFiles()
-        } else {
-            log.Debug("not writing TLS data to files as ForceRecreate is (bool) false")
-        }
-    default:
-        log.Error("unsupported condition for TLS certificate or key ; only one exists but the pair should be either present or absent")
-        if trust.Provision.ForceRecreate {
-            TlsFileDelete(trust.Crt.File)
-            TlsFileDelete(trust.Key.File)
-            mkMyFiles()
-        } else {
-            log.Debug("not writing TLS data to clean files as ForceRecreate is (bool) false")
-        }
-    }
+    // write the PEM-formatted certificate and key data to separate files, if enabled
+    if err := trust.WriteTrustFiles(); err != nil { return err }
 
     // append the complete TlsTrust to the list of Clients in the *TlsTrustDomain
     td.Clients = append(td.Clients, trust)
@@ -317,7 +364,8 @@ func (td *TlsTrustDomain) NewTlsServer(config *configure.EnvoySecret) error {
             StreetAddress: []string{trust.Crt.Config.StreetAddress},
             PostalCode:    []string{trust.Crt.Config.PostalCode},
         },
-        IPAddresses:  trust.Crt.Config.IPaddresses,
+	DNSNames:     trust.Crt.Config.DNSNames,
+        IPAddresses:  trust.Crt.Config.IPAddresses,
         NotBefore:    time.Now(),
         NotAfter:     time.Now().AddDate(10, 0, 0),
         SubjectKeyId: []byte{1, 2, 3, 4, 6},
@@ -340,6 +388,10 @@ func (td *TlsTrustDomain) NewTlsServer(config *configure.EnvoySecret) error {
     // PEM encode the Server private key
     trust.Key.Key = privKey
     trust.Key.PEM = TlsEncodePrivKey(privKey)
+
+    // write the PEM-formatted certificate and key data to separate files, if enabled
+    if err := trust.WriteTrustFiles(); err != nil { return err }
+
     // append the complete TlsTrust to the list of Servers in the *TlsTrustDomain
     td.Servers = append(td.Servers, trust)
 

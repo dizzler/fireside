@@ -403,7 +403,7 @@ func MakeTlsTrustDomains(secrets []configure.EnvoySecret) ([]*tls.TlsTrustDomain
     for _, secretCfg := range secrets {
         // create a new TlsTrustDomain for each CA signing cert/secret
         if secretCfg.Type == configure.SecretTypeTlsCa {
-            log.Debugf("creating TLS CA domain for Envoy secret config %s", secretCfg.Name)
+            log.Infof("creating TLS CA domain for Envoy secret config %s", secretCfg.Name)
             trustDomain, err := tls.NewTlsTrustDomain(&secretCfg)
             if err != nil {
                 log.WithError(err).Fatal("failed to created NewTlsTrustDomain for Envoy secret : " + secretCfg.Name)
@@ -425,6 +425,7 @@ func MakeTlsTrusts(secrets []configure.EnvoySecret, td *tls.TlsTrustDomain) erro
     // use a nested for loop to sign client and server certs
     // with the key from the created CA for the given TlsTrustDomain
     for _, secretCfg := range secrets {
+	log.Debug("MakeTlsTrusts function processing secret config name = " + secretCfg.Name)
         // generate and/or get certificate and key data for clients
         // and servers associated with the created CA
         if secretCfg.Ca.Name == td.Name {
@@ -432,11 +433,13 @@ func MakeTlsTrusts(secrets []configure.EnvoySecret, td *tls.TlsTrustDomain) erro
             case configure.SecretTypeTlsCa:
                 log.Debugf("skipping task for TLS CA %s ; crt/key already configured", secretCfg.Name)
             case configure.SecretTypeTlsClient:
+                log.Debug("creating NewTlsClient for secret config name = " + secretCfg.Name)
                 // create the Client certificate and key by signing with the
                 // CA key for the TlsTrustDomain ; add Client data as an element
                 // within the "Clients" attribute of the TlsTrustDomain
                 td.NewTlsClient(&secretCfg)
             case configure.SecretTypeTlsServer:
+                log.Debug("creating NewTlsServer for secret config name = " + secretCfg.Name)
                 // create the Server certificate and key by signing with the
                 // CA key for the TlsTrustDomain ; add Server data as an element
                 // within the "Servers" attribute of the TlsTrustDomain

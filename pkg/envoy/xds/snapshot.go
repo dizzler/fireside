@@ -1,7 +1,11 @@
 package fireside
 
 import (
+    "errors"
     "fmt"
+    "reflect"
+    "strconv"
+    "strings"
     configure "fireside/pkg/configure"
     tls "fireside/pkg/tls"
 
@@ -10,57 +14,31 @@ import (
     types "github.com/envoyproxy/go-control-plane/pkg/cache/types"
 )
 
-var (
-    debug       bool
-    onlyLogging bool
-    withALS     bool
-
-    port        uint
-    gatewayPort uint
-    alsPort     uint
-
-    mode string
-
-    version int32
-
-    cache cachev3.SnapshotCache
-)
-
 type EnvoySnapshot struct {
-    // NewSnapshotCache to create for storing snapshot updates
-    Cache           cachev3.SnapshotCache
     // Unique ID of the Envoy node for which a snapshot will be generated & applied
     NodeId          string
     // aggregated policy config determines the subset of aggregated resources
     // to create for a given node (i.e. the snapshot)
     Policy          *configure.PolicyConfig
     // use the GenerateSnapshot() method to instantiate the Snapshot field
-    Snapshot        cachev3.Snapshot
+    Snapshot        *cachev3.Snapshot
     // Data structure for storing certs and keys associated with Envoy TLS secrets
     TlsTrustDomains []*tls.TlsTrustDomain
     // version of the snapshot to create (e.g. "v1", "v2", "v3", etc.)
     Version         string
 }
 
-func NewEnvoySnapshot(cache cachev3.SnapshotCache, policy *configure.PolicyConfig, trustDomains []*tls.TlsTrustDomain) *EnvoySnapshot {
-    return &EnvoySnapshot{Cache: cache, Policy: policy, TlsTrustDomains: trustDomains}
-}
-
-func (ns *EnvoySnapshot) ApplySnapshot() error {
-    err := ns.Cache.SetSnapshot(ns.NodeId, ns.Snapshot)
-    if err != nil {
-        return err
-    }
-    return nil
+func NewEnvoySnapshot(policy *configure.PolicyConfig, trustDomains []*tls.TlsTrustDomain) *EnvoySnapshot {
+    return &EnvoySnapshot{Policy: policy, TlsTrustDomains: trustDomains}
 }
 
 func (ns *EnvoySnapshot) AssertSnapshotIsConsistent() error {
-    err := ns.Snapshot.Consistent()
-    if err != nil { return err }
+    snap := *ns.Snapshot
+    if err := snap.Consistent(); err != nil { return err }
     return nil
 }
 
-func (ns *EnvoySnapshot) GenerateSnapshot() {
+func (ns *EnvoySnapshot) GenerateSnapshot() error {
     var policy *configure.PolicyConfig = ns.Policy
     // create Envoy (upstream) endpoints (assigned to clusters) as defined by policy
     var endpoints []types.Resource
@@ -109,10 +87,10 @@ func (ns *EnvoySnapshot) GenerateSnapshot() {
     // create Envoy secrets for TLS certs used in downstream and/or upstream connections
     secrets, err := MakeTlsSecrets(ns.TlsTrustDomains)
     if err != nil {
-        log.WithError(err).Fatal("failed to MakeTlsSecrets from policy configs / TlsTrustDomains")
+        return err
     }
     // create cachev3.NewSnapshot using generated resources
-    ns.Snapshot = cachev3.NewSnapshot(
+    snap := cachev3.NewSnapshot(
         ns.Version,
         endpoints,
         clusters,
@@ -121,6 +99,8 @@ func (ns *EnvoySnapshot) GenerateSnapshot() {
         runtimes,
         secrets,
     )
+    ns.Snapshot = &snap
+    return nil
 }
 
 func (ns *EnvoySnapshot) SetNodeId(nodeId string) {
@@ -129,5 +109,21 @@ func (ns *EnvoySnapshot) SetNodeId(nodeId string) {
 
 func (ns *EnvoySnapshot) SetVersion(snapVersion int32) {
     ns.Version = fmt.Sprintf("v%d", snapVersion)
-    log.Info("set snapshot version to " + ns.Version)
+}
+
+func VersionToInt32(version string) (int32, error) {
+    var versionInt32 int32
+    // get the version of the snapshot in native (string) format
+    if len(version) == 0 {
+        return versionInt32, errors.New("failed to convert snapshot version to int32 ; version (string) is not set)")
+    }
+    // remove the 'v' from the beginning of version string
+    ersion := strings.Trim(version, "v")
+
+    // convert string version to int32() representation
+    versionInt, err := strconv.ParseInt(ersion, 0, 32)
+    versionInt32 = int32(versionInt)
+    log.Debug(fmt.Println(versionInt, err, reflect.TypeOf(versionInt32)))
+
+    return versionInt32, nil
 }

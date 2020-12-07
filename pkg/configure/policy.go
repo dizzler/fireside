@@ -120,6 +120,7 @@ type EnvoySecretTlsCa struct {
 type EnvoySecretTlsCrt struct {
     CommonName    string   `yaml:"common_name"`
     Country       string   `yaml:"country"`
+    DnsNames      []string `yaml:"dns_names"`
     FileName      string   `yaml:"file_name"`
     IpAddresses   []string `yaml:"ip_addresses"`
     Locality      string   `yaml:"locality"`
