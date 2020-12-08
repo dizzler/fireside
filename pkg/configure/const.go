@@ -30,6 +30,7 @@ const (
     // internal names for supported types of Transport Sockets, used for TLS & Tap
     TransportSocketTlsDownstream = "downstream-tls-context"
     TransportSocketTlsUpstream = "upstream-tls-context"
+    UnknownType = "unknown-type"
 )
 
 // Common strings for different types of events

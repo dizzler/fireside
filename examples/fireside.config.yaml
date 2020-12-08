@@ -15,6 +15,7 @@ transformers:
 outputs:
   aws:
     access_key_id: ''
+    profile: ''
     region: 'us-east-2'
     secret_access_key: ''
     s3:

@@ -46,6 +46,9 @@ type Config struct {
         AWS struct {
             // optional ; equivalent of (defaults to) AWS_ACCESS_KEY_ID
             AccessKeyId     string `yaml:"access_key_id"`
+	    // optional ; sets the name of the AWS profile to use for credentials
+	    // preferred over (used before) explicit access/secret keys
+	    Profile         string `yaml:"profile"`
             // REQUIRED if S3Bucket is set
             // equivalent of (defaults to) AWS_DEFAULT_REGION
             Region          string `yaml:"region"`

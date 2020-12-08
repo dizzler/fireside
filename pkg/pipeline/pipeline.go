@@ -20,6 +20,7 @@ var (
 func CreateEventPipeline(config *configure.Config) {
         // Set the various *Config values used throughout the data processing pipeline
         awsOutputConfig = &outproc.AwsOutputConfig{
+		Profile: config.Outputs.AWS.Profile,
                 Region: config.Outputs.AWS.Region,
                 AccessKeyID: config.Outputs.AWS.AccessKeyId,
                 SecretAccessKey: config.Outputs.AWS.SecretAccessKey,

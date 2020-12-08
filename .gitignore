@@ -1,6 +1,7 @@
 *~
 fireside
-example/*.json
+examples/*.json
+examples/*.local
 go/
 ratchet/
 

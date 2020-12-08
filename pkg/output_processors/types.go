@@ -20,6 +20,7 @@ type OutputReceiver struct {
 
 // AwsOutputConfig is a struct to store configuration for AWS-type output processors
 type AwsOutputConfig struct {
+	Profile         string
 	Region          string
 	AccessKeyID     string
 	SecretAccessKey string
