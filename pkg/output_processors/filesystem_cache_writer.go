@@ -33,11 +33,11 @@ type FsCacheWriter struct {
     ArchivePaths []string
     BaseDir      string
     FilePrefix   string
-    OutputConfig *OutputConfig
+    OutputConfig *configure.OutputConfig
 }
 
 // NewFsCacheWriter returns a new FsCacheWriter wrapping the given io.Writer object
-func NewFsCacheWriter(outdir string, prefix string, outconf *OutputConfig) *FsCacheWriter {
+func NewFsCacheWriter(outdir string, prefix string, outconf *configure.OutputConfig) *FsCacheWriter {
     // Initialize the filesystem cache
     p, f, b, err := OpenCacheFile(outdir, prefix)
     if err != nil {
@@ -173,46 +173,56 @@ func RotateFsCache(cacher *FsCacheWriter) {
 }
 
 func CleanFsCache(cacher *FsCacheWriter) {
-	log.Debug("running CleanFsCache function")
-	// Clean the filesystem cache by removing empty and/or old files
-	files, err := ioutil.ReadDir(cacher.BaseDir)
-	if err != nil {
-		log.Error(err)
-	}
-	for _, file := range files {
-		filePath := path.Join([]string{cacher.BaseDir, file.Name()}...)
-		// Avoid archiving data which is either (1) active OR (2) already archived
-		if filePath != cacher.ActivePath && strings.HasSuffix(filePath, configure.OutputSuffix) {
-			log.Debug("checking cache file for archive and/or cleanup : " + filePath)
-			fileInfo, ferr := os.Stat(filePath)
-			if ferr != nil {
-				log.Error(ferr)
-			}
-			switch mode := fileInfo.Mode(); {
-			case mode.IsDir():
-				log.Debug("skipping removal of directory : " + filePath)
-			case mode.IsRegular():
-				if fileInfo.Size() == 0 {
-					log.Debug("removing empty cache file : " + filePath)
-					rerr := os.RemoveAll(filePath)
-					if rerr != nil {
-						log.Error(rerr)
-					}
-				} else {
-					a_err := ArchiveCacheFile(cacher, filePath, fileInfo)
-					if a_err != nil {
-						log.Error(a_err)
-					}
-				}
-			}
-		} else {
-			log.Debug("skipping archive/cleanup task for file : " + filePath)
-		}
-	}
+    log.Debug("running CleanFsCache function")
+    // Clean the filesystem cache by removing empty and/or old files
+    files, err := ioutil.ReadDir(cacher.BaseDir)
+    if err != nil {
+        log.Error(err)
+    }
+    for _, file := range files {
+        filePath := path.Join([]string{cacher.BaseDir, file.Name()}...)
+        // Avoid archiving data which is either (1) active OR (2) already archived
+        if filePath != cacher.ActivePath && strings.HasSuffix(filePath, configure.OutputSuffix) {
+            log.Debug("checking cache file for archive and/or cleanup : " + filePath)
+            fileInfo, ferr := os.Stat(filePath)
+            if ferr != nil {
+                log.Error(ferr)
+            }
+            switch mode := fileInfo.Mode(); {
+            case mode.IsDir():
+                log.Debug("skipping removal of directory : " + filePath)
+            case mode.IsRegular():
+                if fileInfo.Size() == 0 {
+                    log.Debug("removing empty cache file : " + filePath)
+                    rerr := os.RemoveAll(filePath)
+                    if rerr != nil {
+                        log.Error(rerr)
+                    }
+                } else {
+                    a_err := ArchiveCacheFile(cacher, filePath)
+                    if a_err != nil {
+                        log.Error(a_err)
+                    }
+                }
+            }
+        } else {
+            log.Debug("skipping archive/cleanup task for file : " + filePath)
+        }
+    }
 }
 
-func ArchiveCacheFile(cacher *FsCacheWriter, filepath string, fileinfo os.FileInfo) error {
+func ArchiveCacheFile(cacher *FsCacheWriter, filepath string) error {
     log.Debug("running ArchiveCacheFile function")
+    // change to the directory of the file to compress/archive in order to avoid adding
+    // filepath prefix to paths within archive
+    if err := os.Chdir(path.Dir(filepath)); err != nil { return err }
+
+    filename := path.Base(filepath)
+
+    // get fresh info for the file after changing working directory
+    fileinfo, err := os.Stat(filename)
+    if err != nil { return err }
+
     // Generate the filepath for the archive file, based on the current time.Now()
     acf_name := NameCacheFile(cacher.BaseDir, cacher.FilePrefix, configure.ArchiveSuffix)
     acf, err := os.OpenFile(acf_name, os.O_RDWR|os.O_CREATE, 0640)
@@ -232,7 +242,7 @@ func ArchiveCacheFile(cacher *FsCacheWriter, filepath string, fileinfo os.FileIn
     // Create a tar header from source FileInfo data
     header, err := tar.FileInfoHeader(fileinfo, fileinfo.Name())
     if err != nil { return err }
-    header.Name = filepath
+    header.Name = fileinfo.Name()
 
     // Write file header to tar archive
     err = tw.WriteHeader(header)
@@ -240,7 +250,7 @@ func ArchiveCacheFile(cacher *FsCacheWriter, filepath string, fileinfo os.FileIn
 
     // Open source file as read-only
     var src *os.File
-    src, err = os.OpenFile(filepath, os.O_RDONLY, 0640)
+    src, err = os.OpenFile(filename, os.O_RDONLY, 0640)
     if err != nil { return err }
 
     // Copy file contents to tar archive
@@ -308,8 +318,8 @@ func NewAwsSession(cacher *FsCacheWriter) (*session.Session, error) {
     // validate the session by attempting to get a token
     _, err = sts.New(sess).GetCallerIdentity(&sts.GetCallerIdentityInput{})
     if err != nil {
-        log.Printf("[ERROR] : AWS - %v\n", "Error while getting AWS Token")
-        return nil, errors.New("Error while getting AWS Token")
+        log.WithError(err).Error("error getting AWS Token")
+        return nil, err
     }
 
     // return the session

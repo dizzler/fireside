@@ -86,7 +86,7 @@ type XdsServer struct {
 func NewXdsServer(config *configure.Config) *XdsServer {
     ctx := context.Background()
 
-    log.Info("Starting control plane for Envoy xDS")
+    log.Info("starting control plane for Envoy xDS")
 
     reqchan := make(chan *discoverygrpc.DiscoveryRequest)
     signal := make(chan struct{})

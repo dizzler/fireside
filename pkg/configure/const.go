@@ -20,23 +20,24 @@ const (
     OutputSuffix  string = "out"
     // Rest mode for resources: polling using Fetch
     Rest = "rest"
-    // Xds mode for resources: individual xDS services
-    Xds = "xds"
-    // XdsCluster is the cluster name for the control server (used by non-ADS set-up)
-    XdsCluster = "xds_cluster"
     SecretTypeTlsCa = "tls-ca"
     SecretTypeTlsClient = "tls-client"
     SecretTypeTlsServer = "tls-server"
     // internal names for supported types of Transport Sockets, used for TLS & Tap
     TransportSocketTlsDownstream = "downstream-tls-context"
     TransportSocketTlsUpstream = "upstream-tls-context"
-    UnknownType = "unknown-type"
+    // Xds mode for resources: individual xDS services
+    Xds = "xds"
+    // XdsCluster is the cluster name for the control server (used by non-ADS set-up)
+    XdsCluster = "xds_cluster"
 )
 
 // Common strings for different types of events
 const (
-    EventCategoryHttp = "proxy_http"
-    EventCategoryTcp = "proxy_tcp"
-    EventSrcGrpc = "envoy_grpc"
-    EventType    = "envoy_accesslog"
+    EventCategoryHttp       = "proxy_http"
+    EventCategoryTcp        = "proxy_tcp"
+    EventSrcGrpc            = "envoy_grpc"
+    EventTypeEnvoyAccesslog = "envoy_accesslog"
+    EventTypeFalcoAlert     = "falco_alert"
+    UnknownType             = "unknown-type"
 )

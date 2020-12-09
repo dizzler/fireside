@@ -13,20 +13,20 @@ import (
 
 var (
     awsCheckCerts   bool = false
-    awsOutputConfig *outproc.AwsOutputConfig
-    outputConfig    *outproc.OutputConfig
+    awsOutputConfig *configure.AwsOutputConfig
+    outputConfig    *configure.OutputConfig
 )
 
 func CreateEventPipeline(config *configure.Config) {
     // Set the various *Config values used throughout the data processing pipeline
-    awsOutputConfig = &outproc.AwsOutputConfig{
+    awsOutputConfig = &configure.AwsOutputConfig{
         Profile: config.Outputs.AWS.Profile,
         Region: config.Outputs.AWS.Region,
         AccessKeyID: config.Outputs.AWS.AccessKeyId,
         SecretAccessKey: config.Outputs.AWS.SecretAccessKey,
         S3BasePath: config.Outputs.AWS.S3.BasePath,
         S3Bucket: config.Outputs.AWS.S3.Bucket}
-    outputConfig = &outproc.OutputConfig{
+    outputConfig = &configure.OutputConfig{
         AWS: awsOutputConfig,
         CheckCert: awsCheckCerts}
 
