@@ -396,7 +396,7 @@ func MakeTlsSecrets(trustDomains []*tls.TlsTrustDomain) ([]types.Resource, error
     return resources, nil
 }
 
-// MakeTlsTrustDomains creats a tls.TlsTrustDomain (struct) abject for each
+// MakeTlsTrustDomains creates a tls.TlsTrustDomain (struct) abject for each
 // signing CA in the list of Envoy "Secrets". Must be run before MakeTlsSecrets.
 func MakeTlsTrustDomains(secrets []configure.EnvoySecret) ([]*tls.TlsTrustDomain, error) {
     var trustDomains []*tls.TlsTrustDomain

@@ -103,12 +103,16 @@ func (ns *EnvoySnapshot) GenerateSnapshot() error {
     return nil
 }
 
+func (ns *EnvoySnapshot) GetVersion(nodeId string) string {
+    return ns.Version
+}
+
 func (ns *EnvoySnapshot) SetNodeId(nodeId string) {
     ns.NodeId = nodeId
 }
 
 func (ns *EnvoySnapshot) SetVersion(snapVersion int32) {
-    ns.Version = fmt.Sprintf("v%d", snapVersion)
+    ns.Version = fmt.Sprintf("%d", snapVersion)
 }
 
 func VersionToInt32(version string) (int32, error) {
