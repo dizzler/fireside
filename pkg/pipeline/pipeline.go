@@ -32,6 +32,7 @@ func CreateEventPipeline(config *configure.Config) {
 
     // Initialize the data extraction/input processors for pipeline
     eventInEnvoy1 := envoy_logs.NewEnvoyAccesslogReader(config.Inputs.Envoy.Accesslog.Server.Port)
+    eventInFalco1 := NewFileReader(&config.Inputs.Files[0])
 
     // Initialize the transformation/enrichment processors for the pipeline
     var transformerSpec string = ""
@@ -48,6 +49,7 @@ func CreateEventPipeline(config *configure.Config) {
     layout, layerr := ratchet.NewPipelineLayout(
         ratchet.NewPipelineStage(
             ratchet.Do(eventInEnvoy1).Outputs(eventFmt1),
+            ratchet.Do(eventInFalco1).Outputs(eventFmt1),
         ),
         ratchet.NewPipelineStage(
             ratchet.Do(eventFmt1).Outputs(eventOut1),

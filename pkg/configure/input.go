@@ -1,42 +1,25 @@
 package fireside
 
-import (
-    "os"
-
-    log "github.com/sirupsen/logrus"
-)
-
-// InputConfig is a struct to store configuration for pipeline output processors
-type InputConfig struct {
-    BufferSize    int
-    EventCategory string
-    EventType     string
-    Gzipped      bool
-    LineByLine    bool
-    SrcID         string
-    SrcPath       string
-    SrcType       string
-}
-
-func NewInputConfig(bufferSize int, eventCat string, eventType string, gzbool bool,linebool bool,
-                    srcID string, srcPath string, srcType string) *InputConfig {
-    if srcID == "" {
-        hostnm, err := os.Hostname()
-        if err != nil {
-            log.Error("failed to set SrcID for InputConfig")
-        }
-        if len(hostnm) > 0 {
-            srcID = hostnm
-        }
-    }
-    return &InputConfig{
-        BufferSize: bufferSize,
-        EventCategory: eventCat,
-        EventType: eventType,
-        Gzipped: gzbool,
-        LineByLine: linebool,
-        SrcID: srcID,
-        SrcPath: srcPath,
-        SrcType: srcType,
-    }
+// InputConfigFileReader is a struct for storing config for a given
+// event input processor for a given src/event 'Type'. Allows for re-using
+// a common config struct for various types of event providers that export
+// data (for our consumption) to a file. The Src.Path should be readable
+// by the FireSide app at runtime.
+type InputConfigFileReader struct {
+    Name       string `yaml:"name"` // name of the instantiated file reader object
+    BufferSize int    `yaml:"buffer_size"` // size of IO buffer to use when LineByLine is false
+    Event      struct {
+        Category string `yaml:"category"` // event.catecory value to set for events read from Src.Path
+        Type     string `yaml:"type"` // event.type value to set for events read from Src.Path
+    } `yaml:"event"`
+    Gzipped    bool   `yaml:"gzipped"` // is source gzip compressed
+    Line       struct {
+        ByLine   bool   `yaml:"by_line"` // scan one line at a time, vice reading entire file to buffer
+        DataType string `yaml:"data_type"` // e.g. 'json'|'string'
+    } `yaml:"line"`
+    Src        struct {
+        ID   string `yaml:"id"` // src.id value to set for events read from Src.Path
+        Path string `yaml:"path"` // src.path from which to read in events
+        Type string `yaml:"type"` // e.g. 'file' (reserved for future use / extension)
+    } `yaml:"src"`
 }

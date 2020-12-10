@@ -33,6 +33,8 @@ type Config struct {
 		} `yaml:"server"`
 	    } `yaml:"xds"`
 	} `yaml:"envoy"`
+        // list of files from which to read event inputs
+	Files []InputConfigFileReader `yaml:"files"`
     } `yaml:"inputs"`
 
     // configs for transformer processors and providers

@@ -10,6 +10,20 @@ inputs:
       server:
         host: '127.0.0.1'
         port: 5447
+  files:
+    - name: 'falco-reader1'
+      buffer_size: 0
+      event:
+        category: 'sys_audit'
+        type: 'falco_alert'
+      gzipped: false
+      line:
+        by_line: true
+        data_type: 'json'
+      src:
+        id: ''
+        path: '/var/log/falco/events.txt'
+        type: 'file'
 transformers:
   enabled: false
 outputs:
