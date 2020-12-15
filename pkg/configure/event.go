@@ -3,17 +3,24 @@ package fireside
 import (
     "encoding/json"
     "time"
+
+    log "github.com/sirupsen/logrus"
 )
 
 type FiresideEvent struct {
-    Event  FiresideEventEvent  `json:"event"`
-    Source FiresideEventSource `json:"source"`
+    // 'Data' field is always empty in struct; event.data is inserted
+    // after JSON conversion and contains the raw JSON for the source event.
+    Data   map[string]interface{} `json:"data"`
+    // 'Event' field contains a map of other fields that provide context
+    // regarding the category, time, type, etc. of the event.
+    Event  FiresideEventEvent     `json:"event"`
+    // 'Source' filed contains a map of other fields that provide context
+    // regarding how the event was sourced.
+    Source FiresideEventSource    `json:"source"`
 }
 
 type FiresideEventEvent struct {
     Category  string `json:"category"`
-    // 'Data' field is always empty in struct; event 'Data' is inserted after JSON conversion
-    //Data     map[string]interface{}
     Timestamp string `json:"timestamp"`
     Type      string `json:"type"`
 }
@@ -57,9 +64,13 @@ func InsertFiresideEventData(eventData []byte, eventWrapper *FiresideEvent) ([]b
     if merr != nil { return nil, merr }
 
     // insert the source event data into the event wrapper
-    event["raw"] = dataMap
+    event["data"] = dataMap
     eventJson, err := json.Marshal(event)
     if err != nil { return nil, err }
+
+    // debug logging
+    //log.Debugf("creating FiresideEvent : event.event.category = %s : event.event.source = %s", event.event.category, event.event.source)
+    log.Debug(string(eventJson))
 
     return eventJson, nil
 }

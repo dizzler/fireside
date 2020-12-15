@@ -48,8 +48,8 @@ func CreateEventPipeline(config *configure.Config) {
     // Create and validate the PipelineLayout for the complex, multi-phase "Events Pipeline"
     layout, layerr := ratchet.NewPipelineLayout(
         ratchet.NewPipelineStage(
-            ratchet.Do(eventInEnvoy1).Outputs(eventFmt1),
             ratchet.Do(eventInFalco1).Outputs(eventFmt1),
+            ratchet.Do(eventInEnvoy1).Outputs(eventFmt1),
         ),
         ratchet.NewPipelineStage(
             ratchet.Do(eventFmt1).Outputs(eventOut1),
