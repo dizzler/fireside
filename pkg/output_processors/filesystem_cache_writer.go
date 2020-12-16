@@ -1,4 +1,4 @@
-package fireside
+package output_processors
 
 import (
     "archive/tar"
@@ -14,7 +14,8 @@ import (
     "strings"
     "time"
 
-    configure "fireside/pkg/configure"
+    "fireside/pkg/configure"
+
     log "github.com/sirupsen/logrus"
 
     "github.com/aws/aws-sdk-go/aws"

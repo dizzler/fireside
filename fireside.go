@@ -3,10 +3,11 @@ package main
 import (
     "os"
 
-    configure "fireside/pkg/configure"
-    envoy_xds "fireside/pkg/envoy/xds"
     log "github.com/sirupsen/logrus"
-    eventpipe "fireside/pkg/pipeline/events"
+
+    "fireside/pkg/configure"
+    "fireside/pkg/envoy/xds"
+    "fireside/pkg/pipeline/events"
 )
 
 const (
@@ -34,7 +35,7 @@ func RunModeCa(config *configure.Config) {
     log.Debug("running RunModeCa function")
     log.Info("creating TLS Trust Domains for Envoy TLS 'secrets'")
     for _, policy := range config.Policies {
-        _, err := envoy_xds.MakeTlsTrustDomains(policy.Config.Secrets)
+        _, err := xds.MakeTlsTrustDomains(policy.Config.Secrets)
         if err != nil {
             log.WithError(err).Fatal("failure encountered while creating TLS Trust Domain")
         }
@@ -45,10 +46,10 @@ func RunModeCa(config *configure.Config) {
 func RunModeServer(config *configure.Config) {
     log.Debug("running RunModeServer function")
     // create a data processing pipeline for events
-    go eventpipe.CreateEventPipelines(config)
+    go events.CreateEventsPipelines(config)
 
     // serve dynamic resource configurations to Envoy nodes
-    go envoy_xds.ServeEnvoyXds(config)
+    go xds.ServeEnvoyXds(config)
 
     cc := make(chan struct{})
     <-cc

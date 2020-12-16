@@ -1,4 +1,4 @@
-package fireside
+package xds
 
 import (
     "context"
@@ -16,7 +16,7 @@ import (
     log "github.com/sirupsen/logrus"
     "google.golang.org/grpc"
 
-    configure "fireside/pkg/configure"
+    "fireside/pkg/configure"
 )
 
 type Callbacks struct {

@@ -1,4 +1,4 @@
-package fireside
+package accesslog
 
 import (
     "context"
@@ -8,9 +8,9 @@ import (
     "github.com/dailyburn/ratchet/data"
     "google.golang.org/grpc"
 
-    configure "fireside/pkg/configure"
+    "fireside/pkg/configure"
 
-    accesslog "github.com/envoyproxy/go-control-plane/envoy/service/accesslog/v2"
+    alv2 "github.com/envoyproxy/go-control-plane/envoy/service/accesslog/v2"
     log "github.com/sirupsen/logrus"
 )
 
@@ -60,7 +60,7 @@ func RunAccessLogServer(als *AccessLogService, port uint, ctx context.Context) {
         log.WithError(err).Fatal("failed to listen for gRPC Envoy access log server")
     }
 
-    accesslog.RegisterAccessLogServiceServer(grpcServer, als)
+    alv2.RegisterAccessLogServiceServer(grpcServer, als)
     log.WithFields(log.Fields{"port": port}).Info("gRPC server listening for Envoy access logs")
 
     go func() {
@@ -80,7 +80,7 @@ type AccessLogService struct {
 }
 
 // StreamAccessLogs implements the access log service.
-func (svc *AccessLogService) StreamAccessLogs(stream accesslog.AccessLogService_StreamAccessLogsServer) error {
+func (svc *AccessLogService) StreamAccessLogs(stream alv2.AccessLogService_StreamAccessLogsServer) error {
     var logName string
 
     log.Debug("Running StreamAccessLogs function for AccessLogService type")
@@ -94,7 +94,7 @@ func (svc *AccessLogService) StreamAccessLogs(stream accesslog.AccessLogService_
 	    logName = msg.Identifier.LogName
         }
         switch entries := msg.LogEntries.(type) {
-        case *accesslog.StreamAccessLogsMessage_HttpLogs:
+        case *alv2.StreamAccessLogsMessage_HttpLogs:
             for _, entry := range entries.HttpLogs.LogEntry {
                 if entry != nil {
                     // convert the source entry to JSON to avoid dealing with struct fields
@@ -117,7 +117,7 @@ func (svc *AccessLogService) StreamAccessLogs(stream accesslog.AccessLogService_
                     }
                 }
             }
-        case *accesslog.StreamAccessLogsMessage_TcpLogs:
+        case *alv2.StreamAccessLogsMessage_TcpLogs:
             for _, entry := range entries.TcpLogs.LogEntry {
                 if entry != nil {
                     // convert the source entry to JSON to avoid dealing with struct fields

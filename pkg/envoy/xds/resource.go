@@ -1,12 +1,12 @@
-package fireside
+package xds
 
 import (
     "errors"
     "fmt"
     "time"
 
-    configure "fireside/pkg/configure"
-    tls "fireside/pkg/tls"
+    "fireside/pkg/configure"
+    "fireside/pkg/tls"
 
     log "github.com/sirupsen/logrus"
 

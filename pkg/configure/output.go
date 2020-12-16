@@ -1,4 +1,4 @@
-package fireside
+package configure
 
 // AwsOutputConfig is a struct to store configuration for AWS-type output processors
 type AwsOutputConfig struct {

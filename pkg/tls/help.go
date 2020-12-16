@@ -1,4 +1,4 @@
-package fireside
+package tls
 
 import (
     "bytes"

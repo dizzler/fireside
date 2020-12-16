@@ -1,4 +1,4 @@
-package fireside
+package configure
 
 // InputConfigFileReader is a struct for storing config for a given
 // event input processor for a given src/event 'Type'. Allows for re-using

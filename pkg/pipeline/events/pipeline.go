@@ -1,8 +1,8 @@
-package fireside
+package events
 
 import (
-    configure "fireside/pkg/configure"
-    envoy_logs "fireside/pkg/envoy/accesslog"
+    "fireside/pkg/configure"
+    "fireside/pkg/envoy/accesslog"
     outproc "fireside/pkg/output_processors"
     transform "fireside/pkg/transformers"
 
@@ -17,7 +17,7 @@ var (
     outputConfig    *configure.OutputConfig
 )
 
-func CreateEventPipelines(config *configure.Config) {
+func CreateEventsPipelines(config *configure.Config) {
     // Set the various *Config values used throughout the data processing pipeline
     awsOutputConfig = &configure.AwsOutputConfig{
         Profile: config.Outputs.AWS.Profile,
@@ -33,7 +33,7 @@ func CreateEventPipelines(config *configure.Config) {
     ///////////////////////////////   pipeline1   ///////////////////////////////
     const p1 string = "pipeline1"
     // Initialize the data extraction/input processors for pipeline
-    eventInEnvoy1 := envoy_logs.NewEnvoyAccesslogReader(config.Inputs.Envoy.Accesslog.Server.Port)
+    eventInEnvoy1 := accesslog.NewEnvoyAccesslogReader(config.Inputs.Envoy.Accesslog.Server.Port)
 
     // Initialize the transformation/enrichment processors for the pipeline
     var transformerSpec string = ""

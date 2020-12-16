@@ -1,4 +1,4 @@
-package fireside
+package xds
 
 import (
     "errors"
@@ -6,8 +6,9 @@ import (
     "reflect"
     "strconv"
     "strings"
-    configure "fireside/pkg/configure"
-    tls "fireside/pkg/tls"
+
+    "fireside/pkg/configure"
+    "fireside/pkg/tls"
 
     cachev3 "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
     log "github.com/sirupsen/logrus"

@@ -1,4 +1,4 @@
-package fireside
+package tls
 
 import (
     "crypto/rand"
@@ -10,7 +10,7 @@ import (
     "net"
     "time"
 
-    configure "fireside/pkg/configure"
+    "fireside/pkg/configure"
 
     log "github.com/sirupsen/logrus"
 )

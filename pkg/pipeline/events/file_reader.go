@@ -1,15 +1,15 @@
-package fireside
+package events
 
 import (
     "bufio"
-    //"compress/gzip"
     "io"
     "os"
     "time"
 
     "github.com/dailyburn/ratchet/data"
 
-    configure "fireside/pkg/configure"
+    "fireside/pkg/configure"
+
     log "github.com/sirupsen/logrus"
 )
 

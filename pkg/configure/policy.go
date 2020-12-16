@@ -1,4 +1,4 @@
-package fireside
+package configure
 
 // config struct for Policy
 type Policy struct {
