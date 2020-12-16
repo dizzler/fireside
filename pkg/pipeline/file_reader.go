@@ -83,7 +83,7 @@ func (r *FileReader) ProcessData(d data.JSON, outputChan chan data.JSON, killCha
         // insert the JSON data into a field within the event wrapper JSON
         eventJson, err := configure.InsertFiresideEventData(byteData, eventWrapper)
         if err != nil {
-            log.WithError(err).Error(
+            log.WithError(err).Errorf(
                 "failed to create Fireside Event JSON for event source Path = %s : Type = %s",
                 r.Config.Src.Path,
                 r.Config.Src.Type)

@@ -45,7 +45,7 @@ func RunModeCa(config *configure.Config) {
 func RunModeServer(config *configure.Config) {
     log.Debug("running RunModeServer function")
     // create a data processing pipeline for events
-    go pipeline.CreateEventPipeline(config)
+    go pipeline.CreateEventPipelines(config)
 
     // serve dynamic resource configurations to Envoy nodes
     go envoy_xds.ServeEnvoyXds(config)

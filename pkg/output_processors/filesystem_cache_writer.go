@@ -10,6 +10,7 @@ import (
     "io/ioutil"
     "os"
     "path"
+    "path/filepath"
     "strings"
     "time"
 
@@ -181,32 +182,37 @@ func CleanFsCache(cacher *FsCacheWriter) {
     }
     for _, file := range files {
         filePath := path.Join([]string{cacher.BaseDir, file.Name()}...)
-        // Avoid archiving data which is either (1) active OR (2) already archived
-        if filePath != cacher.ActivePath && strings.HasSuffix(filePath, configure.OutputSuffix) {
-            log.Debug("checking cache file for archive and/or cleanup : " + filePath)
-            fileInfo, ferr := os.Stat(filePath)
-            if ferr != nil {
-                log.Error(ferr)
-            }
-            switch mode := fileInfo.Mode(); {
-            case mode.IsDir():
-                log.Debug("skipping removal of directory : " + filePath)
-            case mode.IsRegular():
-                if fileInfo.Size() == 0 {
-                    log.Debug("removing empty cache file : " + filePath)
-                    rerr := os.RemoveAll(filePath)
-                    if rerr != nil {
-                        log.Error(rerr)
-                    }
-                } else {
-                    a_err := ArchiveCacheFile(cacher, filePath)
-                    if a_err != nil {
-                        log.Error(a_err)
+        // Only archive data if the prefix of the filename matches cacher.FilePrefix
+        if strings.HasPrefix(filepath.Base(filePath), cacher.FilePrefix) {
+            // Avoid archiving data which is either (1) active OR (2) already archived
+            if filePath != cacher.ActivePath && strings.HasSuffix(filePath, configure.OutputSuffix) {
+                log.Debug("checking cache file for archive and/or cleanup : " + filePath)
+                fileInfo, ferr := os.Stat(filePath)
+                if ferr != nil {
+                    log.Error(ferr)
+                }
+                switch mode := fileInfo.Mode(); {
+                case mode.IsDir():
+                    log.Debug("skipping removal of directory : " + filePath)
+                case mode.IsRegular():
+                    if fileInfo.Size() == 0 {
+                        log.Debug("removing empty cache file : " + filePath)
+                        rerr := os.RemoveAll(filePath)
+                        if rerr != nil {
+                            log.Error(rerr)
+                        }
+                    } else {
+                        a_err := ArchiveCacheFile(cacher, filePath)
+                        if a_err != nil {
+                            log.Error(a_err)
+                        }
                     }
                 }
+            } else {
+                log.Debug("skipping archive/cleanup task for file : " + filePath)
             }
         } else {
-            log.Debug("skipping archive/cleanup task for file : " + filePath)
+            log.Tracef("cache prefix = %s ; ignoring cache file = %s", cacher.FilePrefix, filePath)
         }
     }
 }

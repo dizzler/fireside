@@ -34,6 +34,8 @@ const (
 
 // Common strings for different types of events
 const (
+    CachePrefixEnvoy        = "fireside-envoy-event-cache"
+    CachePrefixFalco        = "fireside-falco-event-cache"
     EventCategorySysAudit   = "sys_audit"
     EventCategoryHttp       = "proxy_http"
     EventCategoryTcp        = "proxy_tcp"
