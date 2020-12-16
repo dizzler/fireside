@@ -5,8 +5,7 @@ import (
     "fireside/pkg/envoy/accesslog"
     "fireside/pkg/pipeline/conduit"
 
-    outproc "fireside/pkg/output_processors"
-    transform "fireside/pkg/transformers"
+    procs "fireside/pkg/pipeline/processors"
 
     log "github.com/sirupsen/logrus"
 )
@@ -37,11 +36,11 @@ func CreateEventsPipelines(config *configure.Config) {
 
     // Initialize the transformation/enrichment processors for the pipeline
     var transformerSpec string = ""
-    eventFmt1 := transform.NewFormatter(transformerSpec)
+    eventFmt1 := procs.NewFormatter(transformerSpec)
 
     // Initialize the loading/exporting processors for the pipeline
     // Send pipeline output to a directory on the local filesystem
-    eventOut1 := outproc.NewFsCacheWriter(
+    eventOut1 := procs.NewFsCacheWriter(
         config.Outputs.Cache.Events.Directory,
         configure.CachePrefixEnvoy,
         outputConfig)
@@ -69,8 +68,8 @@ func CreateEventsPipelines(config *configure.Config) {
     const p2 string = "pipeline2"
     // Initialize the data processors for pipeline2
     eventInFalco2 := NewFileReader(&config.Inputs.Files[0])
-    eventFmt2 := transform.NewFormatter(transformerSpec)
-    eventOut2 := outproc.NewFsCacheWriter(
+    eventFmt2 := procs.NewFormatter(transformerSpec)
+    eventOut2 := procs.NewFsCacheWriter(
         config.Outputs.Cache.Events.Directory,
         configure.CachePrefixFalco,
         outputConfig)
