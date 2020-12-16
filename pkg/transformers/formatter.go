@@ -1,7 +1,8 @@
 package transformers
 
 import (
-    "github.com/dailyburn/ratchet/data"
+    "fireside/pkg/pipeline/data"
+
     kz "gopkg.in/qntfy/kazaam.v3"
     log "github.com/sirupsen/logrus"
 )

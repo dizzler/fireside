@@ -3,12 +3,12 @@ package events
 import (
     "fireside/pkg/configure"
     "fireside/pkg/envoy/accesslog"
+    "fireside/pkg/pipeline/conduit"
+
     outproc "fireside/pkg/output_processors"
     transform "fireside/pkg/transformers"
 
     log "github.com/sirupsen/logrus"
-
-    "github.com/dailyburn/ratchet"
 )
 
 var (
@@ -47,15 +47,15 @@ func CreateEventsPipelines(config *configure.Config) {
         outputConfig)
 
     // Create and validate the pipeline1 Layout
-    layout1, layerr1 := ratchet.NewPipelineLayout(
-        ratchet.NewPipelineStage(
-            ratchet.Do(eventInEnvoy1).Outputs(eventFmt1),
+    layout1, layerr1 := conduit.NewPipelineLayout(
+        conduit.NewPipelineStage(
+            conduit.Do(eventInEnvoy1).Outputs(eventFmt1),
         ),
-        ratchet.NewPipelineStage(
-            ratchet.Do(eventFmt1).Outputs(eventOut1),
+        conduit.NewPipelineStage(
+            conduit.Do(eventFmt1).Outputs(eventOut1),
         ),
-        ratchet.NewPipelineStage(
-            ratchet.Do(eventOut1),
+        conduit.NewPipelineStage(
+            conduit.Do(eventOut1),
         ),
     )
     if layerr1 != nil {
@@ -63,7 +63,7 @@ func CreateEventsPipelines(config *configure.Config) {
     }
 
     // Create a new pipeline using the initialized processors
-    pipeline1 := ratchet.NewBranchingPipeline(layout1)
+    pipeline1 := conduit.NewBranchingPipeline(layout1)
 
     ///////////////////////////////   pipeline2   ///////////////////////////////
     const p2 string = "pipeline2"
@@ -76,15 +76,15 @@ func CreateEventsPipelines(config *configure.Config) {
         outputConfig)
 
     // Create and validate the pipeline2 Layout
-    layout2, layerr2 := ratchet.NewPipelineLayout(
-        ratchet.NewPipelineStage(
-            ratchet.Do(eventInFalco2).Outputs(eventFmt2),
+    layout2, layerr2 := conduit.NewPipelineLayout(
+        conduit.NewPipelineStage(
+            conduit.Do(eventInFalco2).Outputs(eventFmt2),
         ),
-        ratchet.NewPipelineStage(
-            ratchet.Do(eventFmt2).Outputs(eventOut2),
+        conduit.NewPipelineStage(
+            conduit.Do(eventFmt2).Outputs(eventOut2),
         ),
-        ratchet.NewPipelineStage(
-            ratchet.Do(eventOut2),
+        conduit.NewPipelineStage(
+            conduit.Do(eventOut2),
         ),
     )
     if layerr2 != nil {
@@ -92,7 +92,7 @@ func CreateEventsPipelines(config *configure.Config) {
     }
 
     // Create a new pipeline using the initialized processors
-    pipeline2 := ratchet.NewBranchingPipeline(layout2)
+    pipeline2 := conduit.NewBranchingPipeline(layout2)
 
     // Run the data processing pipelines and wait for either an error or nil to be returned
     go func() {

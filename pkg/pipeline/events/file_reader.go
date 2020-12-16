@@ -6,9 +6,8 @@ import (
     "os"
     "time"
 
-    "github.com/dailyburn/ratchet/data"
-
     "fireside/pkg/configure"
+    "fireside/pkg/pipeline/data"
 
     log "github.com/sirupsen/logrus"
 )

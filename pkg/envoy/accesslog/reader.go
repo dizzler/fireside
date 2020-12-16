@@ -5,10 +5,10 @@ import (
     "encoding/json"
     "fmt"
     "net"
-    "github.com/dailyburn/ratchet/data"
     "google.golang.org/grpc"
 
     "fireside/pkg/configure"
+    "fireside/pkg/pipeline/data"
 
     alv2 "github.com/envoyproxy/go-control-plane/envoy/service/accesslog/v2"
     log "github.com/sirupsen/logrus"

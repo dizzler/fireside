@@ -15,6 +15,7 @@ import (
     "time"
 
     "fireside/pkg/configure"
+    "fireside/pkg/pipeline/data"
 
     log "github.com/sirupsen/logrus"
 
@@ -23,8 +24,6 @@ import (
     "github.com/aws/aws-sdk-go/aws/session"
     "github.com/aws/aws-sdk-go/service/s3/s3manager"
     "github.com/aws/aws-sdk-go/service/sts"
-    "github.com/dailyburn/ratchet/data"
-    "github.com/dailyburn/ratchet/logger"
 )
 
 // FsCacheWriter struct provides configuration for a new filesystem cache writer.
@@ -59,7 +58,7 @@ func (w *FsCacheWriter) ProcessData(d data.JSON, outputChan chan data.JSON, kill
     // Append the string to the output file for the current minute
     bytesWritten, _ = w.ActiveBuf.WriteString(string(d) + "\n")
 
-    logger.Debug("FsCacheWriter:", bytesWritten, "bytes written")
+    log.Debug("FsCacheWriter:", bytesWritten, "bytes written")
 }
 
 // Finish - see interface for documentation.
