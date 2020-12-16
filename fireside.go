@@ -6,7 +6,7 @@ import (
     configure "fireside/pkg/configure"
     envoy_xds "fireside/pkg/envoy/xds"
     log "github.com/sirupsen/logrus"
-    pipeline "fireside/pkg/pipeline"
+    eventpipe "fireside/pkg/pipeline/events"
 )
 
 const (
@@ -45,7 +45,7 @@ func RunModeCa(config *configure.Config) {
 func RunModeServer(config *configure.Config) {
     log.Debug("running RunModeServer function")
     // create a data processing pipeline for events
-    go pipeline.CreateEventPipelines(config)
+    go eventpipe.CreateEventPipelines(config)
 
     // serve dynamic resource configurations to Envoy nodes
     go envoy_xds.ServeEnvoyXds(config)
