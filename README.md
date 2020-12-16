@@ -53,5 +53,3 @@ FireSide works by:
 
         transformers/       # code for processing / transforming pipeline events
 
-    ratchet/      # TEMPORARY workaround for bugs in upstream package
-
