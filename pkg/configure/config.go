@@ -12,7 +12,8 @@ import (
 type Config struct {
 
     Logging struct {
-	Debug bool `yaml:"debug"`
+	// string value is converted to log.Level at runtime
+	Level string `yaml:"level"`
     } `yaml:"logging"`
 
     // configs for input processors and providers
@@ -140,10 +141,8 @@ func ParseFlags() (string, string, error) {
     }
 
     switch runMode {
-    case "ca":
-	    log.Info("running mode = ca")
-    case "server":
-	    log.Info("running mode = server")
+    case "ca","server":
+	    log.Info("running FireSide with mode = " + runMode)
     default:
 	    log.Fatal("unsupported value for running 'mode' : " + runMode)
     }
