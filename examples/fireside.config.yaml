@@ -41,12 +41,17 @@ outputs:
       prefix: 'fireside-event-cache'
 policies:
   - id: 'fs-envoy-def-001'
+    type: ''
+    priority: 1
+    filters: []
+    tagger_policy: {}
+  - id: 'fs-envoy-def-001'
     type: 'envoyProxyDefinition'
     priority: 1
     filters:
       - key: 'node-id'
         value: 'test-id-1'
-    config:
+    envoy_policy:
       access_loggers:
         - name: 'test123-access-logger'
           cluster_name: 'test123-accesslog-cluster'

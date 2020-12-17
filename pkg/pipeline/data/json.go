@@ -22,6 +22,24 @@ func NewJSON(v interface{}) (JSON, error) {
 	return d, err
 }
 
+// decodes JSON []bytes into a go interface{}; includes the option of decoding
+// numbers as json.Number (required for OPA processing of JSON)
+func DecodeJSON(dataBytes JSON, useNumber bool) (i map[string]interface{}, e error) {
+    dec := json.NewDecoder(bytes.NewReader(dataBytes))
+
+    // OPA evaluation of input data requires that
+    // numeric values must be represented as json.Number
+    if useNumber {
+        dec.UseNumber()
+    }
+
+    // decode source JSON into map[string]interface{}
+    e = dec.Decode(&i)
+
+    // return the current values for i and e
+    return
+}
+
 // ParseJSON is a simple wrapper for json.Unmarshal
 func ParseJSON(d JSON, v interface{}) error {
 	err := json.Unmarshal(d, v)

@@ -20,7 +20,7 @@ type EnvoySnapshot struct {
     NodeId          string
     // aggregated policy config determines the subset of aggregated resources
     // to create for a given node (i.e. the snapshot)
-    Policy          *configure.PolicyConfig
+    Policy          *configure.EnvoyPolicyConfig
     // use the GenerateSnapshot() method to instantiate the Snapshot field
     Snapshot        *cachev3.Snapshot
     // Data structure for storing certs and keys associated with Envoy TLS secrets
@@ -29,7 +29,7 @@ type EnvoySnapshot struct {
     Version         string
 }
 
-func NewEnvoySnapshot(policy *configure.PolicyConfig, trustDomains []*tls.TlsTrustDomain) *EnvoySnapshot {
+func NewEnvoySnapshot(policy *configure.EnvoyPolicyConfig, trustDomains []*tls.TlsTrustDomain) *EnvoySnapshot {
     return &EnvoySnapshot{Policy: policy, TlsTrustDomains: trustDomains}
 }
 
@@ -40,7 +40,7 @@ func (ns *EnvoySnapshot) AssertSnapshotIsConsistent() error {
 }
 
 func (ns *EnvoySnapshot) GenerateSnapshot() error {
-    var policy *configure.PolicyConfig = ns.Policy
+    var policy *configure.EnvoyPolicyConfig = ns.Policy
     // create Envoy (upstream) endpoints (assigned to clusters) as defined by policy
     var endpoints []types.Resource
     for _, endpointCfg := range policy.Endpoints {

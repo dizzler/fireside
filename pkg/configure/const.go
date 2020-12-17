@@ -2,7 +2,7 @@ package configure
 
 import "os"
 
-// Common strings used throughout fireside
+// common strings used throughout fireside
 const (
     ArchiveSuffix string = "tar.gz"
     FiresideStr = "fireside"
@@ -32,7 +32,7 @@ const (
     XdsCluster = "xds_cluster"
 )
 
-// Common strings for different types of events
+// common strings for different types of events
 const (
     CachePrefixEnvoy        = "fireside-envoy-event-cache"
     CachePrefixFalco        = "fireside-falco-event-cache"
@@ -43,4 +43,23 @@ const (
     EventTypeEnvoyAccesslog = "envoy_accesslog"
     EventTypeFalcoAlert     = "falco_alert"
     UnknownType             = "unknown-type"
+)
+
+// common strings for different types of policies
+const (
+    PolicyTypeEnvoyProxy = "envoyProxyDefinition"
+    PolicyTypeTagEvents  = "eventTagger"
+)
+
+// common strings for tagging processed data
+const (
+    DefaultTagErrorField = "tag_errors"
+    DefaultTagFalseField = "tag_matches"
+    DefaultTagTrueField  = "tag_misses"
+)
+
+// common strings for the running "mode"
+const (
+    RunModeCa     = "ca"
+    RunModeServer = "server"
 )

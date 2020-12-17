@@ -32,6 +32,7 @@ type FiresideEventSource struct {
     Type string `json:"type"`
 }
 
+// instantiates a new FiresideEvent
 func NewFiresideEvent(eventCat string, eventType string, srcID string, srcPath string, srcType string) *FiresideEvent {
     return &FiresideEvent{
         Event: FiresideEventEvent{
@@ -47,6 +48,8 @@ func NewFiresideEvent(eventCat string, eventType string, srcID string, srcPath s
     }
 }
 
+// inserts an arbitrary JSON object into the top-level `data` field
+// of the wrapping FiresideEvent
 func InsertFiresideEventData(eventData []byte, eventWrapper *FiresideEvent) ([]byte, error) {
     // unmarshal the JSON for the source entry so that we can insert into
     // a common event wrapper
@@ -69,7 +72,6 @@ func InsertFiresideEventData(eventData []byte, eventWrapper *FiresideEvent) ([]b
     if err != nil { return nil, err }
 
     // debug logging
-    //log.Debugf("creating FiresideEvent : event.event.category = %s : event.event.source = %s", event.event.category, event.event.source)
     log.Debug(string(eventJson))
 
     return eventJson, nil

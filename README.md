@@ -24,7 +24,7 @@ FireSide works by:
 
 
 ## LAYOUT
-    env.go.helper # helper file to source in order to set GO* env vars
+    env.helper.sh # helper file to source in order to set GO* env vars
                   # for (this) FireSide repo
 
     examples/     # directory of example configs for fireside, envoy, falco, etc.
@@ -61,6 +61,9 @@ FireSide works by:
 
             bundle/       # code for packaging and loading OPA "bundles" of
                           # of (.rego) modules and (.json|.yaml) data files
+
+            policy/       # code for applying policies to input data using OPA
+                          # queries to implement policy logic
 
             query/        # code for preparing and evaluating OPA queries
 

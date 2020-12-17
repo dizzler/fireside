@@ -183,13 +183,13 @@ func (xc *XdsServer) PolicySnapshotGenerate(nodeId string) error {
             case (policyFilter.Key == configure.Filterkey_Node) && (policyFilter.Value == nodeId):
 		// create / get TLS CA, certs and keys based on policy configs
 		log.Info("creating TLS Trust Domains for Envoy TLS 'secrets'")
-		trustDomains, err := MakeTlsTrustDomains(envoyPolicy.Config.Secrets)
+		trustDomains, err := MakeTlsTrustDomains(envoyPolicy.EnvoyPolicy.Secrets)
 		if err != nil {
                     return err
 		}
 
                 // create a new snapshot of aggregated resources for the Envoy node
-                snap := NewEnvoySnapshot(&envoyPolicy.Config, trustDomains)
+                snap := NewEnvoySnapshot(&envoyPolicy.EnvoyPolicy, trustDomains)
                 // associated the generated snapshot with the specified Envoy node ID
                 snap.SetNodeId(nodeId)
 

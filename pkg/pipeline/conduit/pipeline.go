@@ -81,7 +81,7 @@ func (p *Pipeline) dataProcessorOutputs(dp *dataProcessor) []*dataProcessor {
 // manage copying and passing data between stages, as well as properly closing
 // channels when all data is received.
 func (p *Pipeline) connectStages() {
-    log.Debug(p.Name, ": connecting stages")
+    log.Debug(p.Name, " : connecting stages ")
     // First, setup the bridgeing channels & brancher/merger's to aid in
     // managing channel communication between processors.
     for _, stage := range p.layout.stages {
@@ -121,15 +121,15 @@ func (p *Pipeline) runStages(killChan chan error) {
             go func(n int, dp *dataProcessor) {
                 // This is where the main DataProcessor interface
                 // functions are called.
-                log.Info(p.Name, "- stage", n+1, dp, "waiting to receive data")
+                log.Debug(p.Name, " - stage", n+1, dp, " waiting to receive data")
 
                 // Store a bunch of channels, so we can wait on their output without messing up the order of operations.
                 exitChans := []chan bool{}
 
                 for d := range dp.inputChan {
-                    log.Info(p.Name, "- stage", n+1, dp, "received data")
+                    log.Debug(p.Name, " - stage", n+1, dp, " received data")
                     if p.PrintData {
-                        log.Debug(p.Name, "- stage", n+1, dp, "data =", string(d))
+                        log.Debug(p.Name, " - stage", n+1, dp, " data = ", string(d))
                     }
                     dp.recordDataReceived(d)
                     exitChans = append(exitChans, dp.processData(d, killChan))
@@ -140,10 +140,10 @@ func (p *Pipeline) runStages(killChan chan error) {
                     <-exitChans[i]
                 }
 
-                log.Info(p.Name, "- stage", n+1, dp, "input closed, calling Finish")
+                log.Info(p.Name, " - stage", n+1, dp, " input closed, calling Finish")
                 dp.Finish(dp.outputChan, killChan)
                 if dp.outputChan != nil {
-                    log.Info(p.Name, "- stage", n+1, dp, "closing output")
+                    log.Info(p.Name, " - stage", n+1, dp, " closing output")
                     close(dp.outputChan)
                 }
                 p.wg.Done()
@@ -166,7 +166,7 @@ func (p *Pipeline) Run() (killChan chan error) {
     p.runStages(killChan)
 
     for _, dp := range p.layout.stages[0].processors {
-        log.Info(p.Name, ": sending", StartSignal, "to", dp)
+        log.Info(p.Name, " : sending ", StartSignal, " to ", dp)
         dp.inputChan <- data.JSON(StartSignal)
         dp.Finish(dp.outputChan, killChan)
         close(dp.inputChan)

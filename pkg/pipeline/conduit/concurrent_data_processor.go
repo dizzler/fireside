@@ -47,7 +47,7 @@ type result struct {
 }
 
 func (dp *dataProcessor) processData(d data.JSON, killChan chan error) chan bool {
-    log.Debug("dataProcessor: processData", dp, "with concurrency =", dp.concurrency)
+    log.Trace("dataProcessor: processData ", dp, " with concurrency = ", dp.concurrency)
     exit := make(chan bool, 1)
     // If no concurrency is needed, simply call stage.ProcessData and return...
     if dp.concurrency <= 1 {
@@ -58,10 +58,10 @@ func (dp *dataProcessor) processData(d data.JSON, killChan chan error) chan bool
         return exit
     }
     // ... otherwise process the data in a concurrent queue/pool of goroutines
-    log.Debug("dataProcessor: processData", dp, "waiting for work")
+    log.Trace("dataProcessor: processData ", dp, " waiting for work")
     // wait for room in the queue
     dp.workThrottle <- workSignal{}
-    log.Debug("dataProcessor: processData", dp, "work obtained")
+    log.Trace("dataProcessor: processData ", dp, " work obtained")
     rc := make(chan data.JSON)
     done := make(chan bool)
     // setup goroutine to handle result
@@ -70,17 +70,17 @@ func (dp *dataProcessor) processData(d data.JSON, killChan chan error) chan bool
         dp.Lock()
         dp.workList.PushBack(&res)
         dp.Unlock()
-        log.Debug("dataProcessor: processData", dp, "waiting to receive data on result chan")
+        log.Trace("dataProcessor: processData ", dp, " waiting to receive data on result chan")
         for {
             select {
             case d, open := <-rc:
-                log.Debug("dataProcessor: processData", dp, "received data on result chan")
+                log.Trace("dataProcessor: processData ", dp, " received data on result chan")
                 res.data = append(res.data, d)
                 // outputChan will need to be closed if the rc chan was closed
                 res.open = open
             case <-done:
                 res.done = true
-                log.Debug("dataProcessor: processData", dp, "done, releasing work")
+                log.Trace("dataProcessor: processData ", dp, " done, releasing work")
                 <-dp.workThrottle
                 dp.sendResults()
                 exit <- true
@@ -104,16 +104,16 @@ func (dp *dataProcessor) processData(d data.JSON, killChan chan error) chan bool
 // original outputChan.
 func (dp *dataProcessor) sendResults() {
     dp.Lock()
-    log.Debug("dataProcessor: sendResults checking for valid data to send")
+    log.Trace("dataProcessor: sendResults checking for valid data to send")
     e := dp.workList.Front()
     for e != nil && e.Value.(*result).done {
-        log.Debug("dataHandler: sendResults sending data")
+        log.Trace("dataHandler: sendResults sending data")
         res := dp.workList.Remove(e).(*result)
         for _, d := range res.data {
             res.outputChan <- d
         }
         if !res.open {
-            log.Debug("dataProcessor: sendResults closing outputChan")
+            log.Trace("dataProcessor: sendResults closing outputChan")
             close(res.outputChan)
         }
         e = dp.workList.Front()

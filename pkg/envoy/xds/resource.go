@@ -152,7 +152,7 @@ func MakeEndpoint(config *configure.EnvoyEndpoint) *endpoint.ClusterLoadAssignme
 
 // MakeFilterChain creates a filter chain (i.e. named list of network filters)
 // for use by a given Envoy listener
-func MakeFilterChain(config *configure.EnvoyFilterChain, policy *configure.PolicyConfig) *listener.FilterChain {
+func MakeFilterChain(config *configure.EnvoyFilterChain, policy *configure.EnvoyPolicyConfig) *listener.FilterChain {
     var (
         filterList      []configure.EnvoyFilter = policy.Filters
         networkFilters  []*listener.Filter
@@ -204,7 +204,7 @@ func MakeHttpFilter(config *configure.EnvoyFilter) *hcm.HttpFilter {
 
 // MakeNetworkFilter creates an Envoy network filter (e.g. TCP, HTTP Connection Manager, etc.)
 // from supplied configs
-func MakeNetworkFilter(config *configure.EnvoyFilter, policy *configure.PolicyConfig) *listener.Filter {
+func MakeNetworkFilter(config *configure.EnvoyFilter, policy *configure.EnvoyPolicyConfig) *listener.Filter {
     if config.Type != "network" {
         log.Fatal("cannot MakeNetworkFilter for filter type " + config.Type)
     }
@@ -233,7 +233,7 @@ func MakeNetworkFilter(config *configure.EnvoyFilter, policy *configure.PolicyCo
 
 // MakeHttpConnectionManagerConfig creates an hcm.HttpConnectionManager typed
 // filter configuration, using either ADS or RDS for route discovery
-func MakeHttpConnectionManagerConfig(config *configure.EnvoyFilter, policy *configure.PolicyConfig) *hcm.HttpConnectionManager {
+func MakeHttpConnectionManagerConfig(config *configure.EnvoyFilter, policy *configure.EnvoyPolicyConfig) *hcm.HttpConnectionManager {
     // set vars used in this function
     var (
         accesslogConfigs []*alf.AccessLog
@@ -284,7 +284,7 @@ func MakeHttpConnectionManagerConfig(config *configure.EnvoyFilter, policy *conf
 }
 
 // MakeListener creates an Envoy listener from supplied configs
-func MakeListener(config *configure.EnvoyListener, policy *configure.PolicyConfig) *listener.Listener {
+func MakeListener(config *configure.EnvoyListener, policy *configure.EnvoyPolicyConfig) *listener.Listener {
     var (
         filterChains []*listener.FilterChain
         filterChainList []configure.EnvoyFilterChain = policy.FilterChains
@@ -317,7 +317,7 @@ func MakeListener(config *configure.EnvoyListener, policy *configure.PolicyConfi
 
 // MakeRouteConfig creates an HTTP route config that routes to a given cluster,
 // where the created route is discoverable (via ADS || RDS) for HTTP Connection Manager.
-func MakeRouteConfig(routeCfg *configure.EnvoyRouteConfig, policy *configure.PolicyConfig) *route.RouteConfiguration {
+func MakeRouteConfig(routeCfg *configure.EnvoyRouteConfig, policy *configure.EnvoyPolicyConfig) *route.RouteConfiguration {
     var (
         // create an empty slice of virtual hosts to create for the route
         routeVhosts []*route.VirtualHost

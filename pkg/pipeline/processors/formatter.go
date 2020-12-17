@@ -29,10 +29,11 @@ func (k *Formatter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
     outputChan <- dx
 }
 
-// Finish - see interface for documentation.
+// required by processor (conduit) interface
 func (k *Formatter) Finish(outputChan chan data.JSON, killChan chan error) {
 }
 
+// required by processor (conduit) interface
 func (k *Formatter) String() string {
     return "Formatter"
 }
