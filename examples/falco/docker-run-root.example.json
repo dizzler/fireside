@@ -1,0 +1,18 @@
+{
+  "output": "21:53:16.558820263: Notice A shell was spawned in a container with an attached terminal (user=root user_loginuid=-1 tag-me-bad (id=c1a3ea814fc3) shell=bash parent=<NA> cmdline=bash terminal=34816 container_id=c1a3ea814fc3 image=ubuntu)",
+  "priority": "Notice",
+  "rule": "Terminal shell in container",
+  "time": "2020-12-18T21:53:16.558820263Z",
+  "output_fields": {
+    "container.id": "c1a3ea814fc3",
+    "container.image.repository": "ubuntu",
+    "container.name": "tag-me-bad",
+    "evt.time": 1608328396558820400,
+    "proc.cmdline": "bash",
+    "proc.name": "bash",
+    "proc.pname": null,
+    "proc.tty": 34816,
+    "user.loginuid": -1,
+    "user.name": "root"
+  }
+}

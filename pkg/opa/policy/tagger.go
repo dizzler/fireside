@@ -21,7 +21,7 @@ type Tagger struct {
 
     // list of tagger queries to run in a separate goroutine;
     // all queries operate on the same EventType
-    TaggerQueries []query.TaggerQuery
+    TaggerQueries []*query.TaggerQuery
 }
 
 func NewTagger(config *configure.TaggerPolicyConfig, ctx context.Context) *Tagger {
@@ -39,17 +39,24 @@ func NewTagger(config *configure.TaggerPolicyConfig, ctx context.Context) *Tagge
         config.TagsTrueField = configure.DefaultTagTrueField
     }
 
-    // return a pointer to the TaggerPolicyConfig
+    // populate the list of taggerQueries from configs
+    var taggerQueries []*query.TaggerQuery
+    for _, taggerQuery := range config.QueryConfigs {
+        taggerQueries = append(taggerQueries, query.NewTaggerQuery(&taggerQuery))
+    }
+
+    // return a pointer to the Tagger struct
     return &Tagger{
         Config: config,
         Ctx: ctx,
+        TaggerQueries: taggerQueries,
     }
 }
 
 // evaluate the PreparedQuery for each query.TaggerQuery;
 // this method must be run after PrepareQueries() method
-func (t *Tagger) EvaluateQueries(in data.JSON) (out data.JSON, oerr error) {
-    log.Trace("running EvaluateQueries method on Tagger type")
+func (t *Tagger) EvaluatePreparedQueries(in data.JSON) (out data.JSON, oerr error) {
+    log.Trace("running EvaluatePreparedQueries method on Tagger type")
     var (
         tagsError []string
         tagsFalse []string
@@ -68,7 +75,7 @@ func (t *Tagger) EvaluateQueries(in data.JSON) (out data.JSON, oerr error) {
     // loop through the list of tagger queries to evaluate
     for _, tq := range t.TaggerQueries {
         // evaluate the query
-        eTags, fTags, tTags := tq.EvaluateQuery(eventData, t.Ctx)
+        eTags, fTags, tTags := tq.PreparedQueryEval(eventData)
 
         // append tags to appropriate lists; worry about dedup later
         for _, eTag := range eTags {
@@ -122,7 +129,7 @@ func (t *Tagger) EvaluateQueries(in data.JSON) (out data.JSON, oerr error) {
 }
 
 // prepares the list of TaggerQueries for evaluation;
-// this method must be run before EvaluateQueries() method
+// this method must be run before EvaluatePreparedQueries() method
 func (t *Tagger) PrepareQueries() (preperr error) {
     log.Trace("running PrepareQueries method on Tagger type")
     for _, tq := range t.TaggerQueries {

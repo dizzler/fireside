@@ -19,8 +19,18 @@ type EventTagger struct {
 func NewEventTagger(config *configure.TaggerPolicyConfig) *EventTagger {
     log.Trace("running NewEventTagger function")
 
+    // set the context for the Tagger
     ctx := context.Background()
+
+    // create the new Tagger object
     t := policy.NewTagger(config, ctx)
+
+    // prepare queries for evaluation via Tagger method call
+    if err := t.PrepareQueries(); err != nil {
+        log.WithError(err).Fatal("failed to PrepareQueries for type *Tagger")
+    }
+
+    // return a pointer to the EventTagger struct
     return &EventTagger{T: t}
 }
 
@@ -29,10 +39,18 @@ func NewEventTagger(config *configure.TaggerPolicyConfig) *EventTagger {
 func (et *EventTagger) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
     log.Trace("running ProcessData method for type EventTagger")
 
-    dx, err := et.T.EvaluateQueries(d)
+    var (
+        dx  data.JSON
+        err error
+    )
+
+    dx, err = et.T.EvaluatePreparedQueries(d)
+
     if err != nil {
+        // send the error to the kill channel
         killChan <- err
     } else {
+        // send the enriched event to the output channel
         outputChan <- dx
     }
 }

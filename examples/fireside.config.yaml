@@ -41,12 +41,25 @@ outputs:
       prefix: 'fireside-event-cache'
 policies:
   - id: 'fs-envoy-def-001'
-    type: ''
+    type: 'event_tagger'
     priority: 1
     filters: []
-    tagger_policy: {}
+    tagger_policy:
+      event_type: 'EventTypeFalcoAlert'
+      query_configs:
+        - binding_name: 'multi_match'
+          bundle_path: '/home/ubuntu/Git/forks/fireside/examples/opa/bundles/fireside_events.tar.gz'
+          package: 'falco_test'
+          query_id: 'falco-test-000001'
+          query_string: 'multi_match'
+          tags_error: []
+          tags_false: []
+          tags_true: []
+      tags_error_field: ''
+      tags_false_field: ''
+      tags_true_field: ''
   - id: 'fs-envoy-def-001'
-    type: 'envoyProxyDefinition'
+    type: 'envoy_proxy_definition'
     priority: 1
     filters:
       - key: 'node-id'

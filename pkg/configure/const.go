@@ -47,8 +47,8 @@ const (
 
 // common strings for different types of policies
 const (
-    PolicyTypeEnvoyProxy = "envoyProxyDefinition"
-    PolicyTypeTagEvents  = "eventTagger"
+    PolicyTypeEnvoyProxy = "envoy_proxy_definition"
+    PolicyTypeTagEvents  = "event_tagger"
 )
 
 // common strings for tagging processed data

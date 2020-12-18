@@ -68,7 +68,7 @@ func CreateEventsPipelines(config *configure.Config) {
     const p2 string = "pipeline2"
     // Initialize the data processors for pipeline2
     eventInFalco2 := NewFileReader(&config.Inputs.Files[0])
-    eventFmt2 := procs.NewFormatter(transformerSpec)
+    eventTagger2 := procs.NewEventTagger(&config.Policies[0].TaggerPolicy)
     eventOut2 := procs.NewFsCacheWriter(
         config.Outputs.Cache.Events.Directory,
         configure.CachePrefixFalco,
@@ -77,10 +77,10 @@ func CreateEventsPipelines(config *configure.Config) {
     // Create and validate the pipeline2 Layout
     layout2, layerr2 := conduit.NewPipelineLayout(
         conduit.NewPipelineStage(
-            conduit.Do(eventInFalco2).Outputs(eventFmt2),
+            conduit.Do(eventInFalco2).Outputs(eventTagger2),
         ),
         conduit.NewPipelineStage(
-            conduit.Do(eventFmt2).Outputs(eventOut2),
+            conduit.Do(eventTagger2).Outputs(eventOut2),
         ),
         conduit.NewPipelineStage(
             conduit.Do(eventOut2),

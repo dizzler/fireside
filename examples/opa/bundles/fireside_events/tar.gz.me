@@ -1,0 +1,18 @@
+#!/bin/bash
+## Filename:  tar.gz.me
+
+##  This file is ignored by OPA and exists purely to help build the bundle.
+
+## set the name of the archive file to create
+_archive_filename="fireside_events.tar.gz"
+
+## get the directory of the script so that this script
+## still works even if you do not cd to this dir before
+## running the script
+_script_pwd="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd ${_script_pwd}
+
+## Generates a gzipped tarball for this bundle,
+## storing the resulting archive in the parent directory
+tar czvf ../${_archive_filename} .
+
