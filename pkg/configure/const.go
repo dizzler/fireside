@@ -63,3 +63,15 @@ const (
     RunModeCa     = "ca"
     RunModeServer = "server"
 )
+
+// common strings related to application audit logging behavior
+const (
+    LoggingFormatJson = "json"
+    LoggingFormatText = "text"
+)
+
+// common strings representing environment variables used by FireSide
+const (
+    EnvKeyLoggingFormat = "FIRESIDE_LOGGING_FORMAT"
+    EnvKeyLoggingLevel  = "FIRESIDE_LOGGING_LEVEL"
+)

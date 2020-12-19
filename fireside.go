@@ -9,18 +9,25 @@ import (
     "fireside/pkg/run"
 )
 
-func main() {
-    // gather runtime configuration
-    Config, RunMode := configure.LoadConfig()
+var (
+    config  *configure.Config
+    runMode string
+)
 
+func init() {
+    // gather runtime configuration
+    config, runMode = configure.LoadConfig()
+}
+
+func main() {
     // run in the selected mode
-    switch RunMode {
+    switch runMode {
     case configure.RunModeCa:
-        run.RunModeCa(Config)
+        run.RunModeCa(config)
     case configure.RunModeServer:
-        run.RunModeServer(Config)
+        run.RunModeServer(config)
     default:
-        log.Fatal("unsupported value for run 'mode' = " + RunMode)
+        log.Fatal("unsupported value for run 'mode' = " + runMode)
     }
 
     // exit with a clean return code

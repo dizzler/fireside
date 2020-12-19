@@ -1,9 +1,6 @@
 package configure
 
 import (
-    "flag"
-    "fmt"
-    log "github.com/sirupsen/logrus"
     "os"
     "gopkg.in/yaml.v2"
 )
@@ -11,9 +8,19 @@ import (
 // Config struct for webapp config
 type Config struct {
 
+    // configs related to application audit logging
     Logging struct {
+        // format the log output as JSON or (formatted) string;
+        // valid values include:
+        //     'json'
+        //     'string' (default)
+        //     '' (default)
+        Format string   `yaml:"format"`
 	// string value is converted to log.Level at runtime
-	Level string `yaml:"level"`
+	Level  string `yaml:"level"`
+	// destination where logs are sent; defaults to os.Stdout
+	// when this field is an empty string
+	Output string `yaml:"output"`
     } `yaml:"logging"`
 
     // configs for input processors and providers
@@ -100,53 +107,4 @@ func NewConfig(configPath string) (*Config, error) {
     }
 
     return config, nil
-}
-
-// ValidateConfigPath just makes sure, that the path provided is a file,
-// that can be read
-func ValidateConfigPath(path string) error {
-    s, err := os.Stat(path)
-    if err != nil {
-        return err
-    }
-    if s.IsDir() {
-        return fmt.Errorf("'%s' is a directory, not a normal file", path)
-    }
-    return nil
-}
-
-// ParseFlags will create and parse the CLI flags
-// and return the path to be used elsewhere
-func ParseFlags() (string, string, error) {
-    // String that contains the configured configuration path
-    var (
-	    configPath string
-	    runMode    string
-    )
-
-    // Setup a CLI flag called "-config" to allow users
-    // to supply the configuration file
-    flag.StringVar(&configPath, "config", "/etc/fireside/config.yaml", "Filesystem path of bootstrap config file")
-
-    // Setup a CLI flag called "-mode" in order to allow users to
-    // change the operating / running "mode" for the fireside executable
-    flag.StringVar(&runMode, "mode", "server", "Operational mode in which to run ; set to one of: 'server', 'ca'")
-
-    // Actually parse the flags
-    flag.Parse()
-
-    // Validate the path first
-    if err := ValidateConfigPath(configPath); err != nil {
-        return "", "", err
-    }
-
-    switch runMode {
-    case "ca","server":
-	    log.Info("running FireSide with mode = " + runMode)
-    default:
-	    log.Fatal("unsupported value for running 'mode' : " + runMode)
-    }
-
-    // Return the configuration path
-    return configPath, runMode, nil
 }
