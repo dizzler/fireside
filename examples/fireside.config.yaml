@@ -47,6 +47,7 @@ policies:
     priority: 1
     filters: []
     tagger_policy:
+      concurrency: 10
       event_type: 'EventTypeFalcoAlert'
       query_configs:
         - binding_name: 'x'

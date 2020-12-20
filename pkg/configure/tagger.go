@@ -1,6 +1,9 @@
 package configure
 
 type TaggerPolicyConfig struct {
+    // number of "ProcessData" method calls that may run in parallel threads
+    Concurrency    int                 `yaml:"concurrency"`
+
     // Tagger type can be used for different types of events, but a given
     // Tagger object must process a single EventType as queries/policies
     // expect/require a specific schema for a given EventType

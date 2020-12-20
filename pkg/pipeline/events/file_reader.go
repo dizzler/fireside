@@ -136,12 +136,8 @@ func (tr *TailReader) setFileSize() error {
 // tailFile reads new lines from the end of the File for the TailReader
 func (tr *TailReader) tailFile() {
     for {
-        for line, prefix, err := tr.Buf.ReadLine(); err != io.EOF; line, prefix, err = tr.Buf.ReadLine() {
-            if prefix {
-                log.Warning("read line contains a prefix ; cannot convert to JSON : " + string(line))
-            } else {
-                tr.DataChan <- line
-            }
+        for rbytes, err := tr.Buf.ReadBytes('\n'); err != io.EOF; rbytes, err = tr.Buf.ReadBytes('\n') {
+            tr.DataChan <- rbytes
         }
         pos, err := tr.File.Seek(0, io.SeekCurrent)
         if err != nil {

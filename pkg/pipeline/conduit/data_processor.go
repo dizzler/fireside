@@ -5,6 +5,8 @@ import (
     "fmt"
     "sync"
 
+    log "github.com/sirupsen/logrus"
+
     "fireside/pkg/pipeline/data"
 )
 
@@ -97,6 +99,7 @@ func Do(processor DataProcessor) *dataProcessor {
 
     if isConcurrent(processor) {
         dp.concurrency = processor.(ConcurrentDataProcessor).Concurrency()
+	log.Info("creating DataProcessor with concurrency = %d", dp.concurrency)
         dp.workThrottle = make(chan workSignal, dp.concurrency)
         dp.workList = list.New()
         dp.doneChan = make(chan bool)

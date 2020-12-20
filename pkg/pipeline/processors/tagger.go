@@ -25,6 +25,11 @@ func NewEventTagger(config *configure.TaggerPolicyConfig) *EventTagger {
     // create the new Tagger object
     t := policy.NewTagger(config, ctx)
 
+    // default concurrency to the value of configure.DefaultConcurrencyEventTagger
+    if t.Config.Concurrency == 0 {
+        t.Config.Concurrency = configure.DefaultConcurrencyEventTagger
+    }
+
     // prepare queries for evaluation via Tagger method call
     if err := t.PrepareQueries(); err != nil {
         log.WithError(err).Fatal("failed to PrepareQueries for type *Tagger")
@@ -34,14 +39,18 @@ func NewEventTagger(config *configure.TaggerPolicyConfig) *EventTagger {
     return &EventTagger{T: t}
 }
 
+// implements the Concurrency() method of the ConcurrentDataProcessor interface
+func (et *EventTagger) Concurrency() int {
+    return et.T.Config.Concurrency
+}
+
 // processes data from a given event, adding tags for matches, misses and issues;
 // method required by processor (conduit) interface
 func (et *EventTagger) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
     log.Trace("running ProcessData method for type EventTagger")
 
     // evaluate all tagger queries for the input document (JSON)
-    // in a separate goroutine
-    go et.T.EvaluatePreparedQueries(d, outputChan, killChan)
+    et.T.EvaluatePreparedQueries(d, outputChan, killChan)
 }
 
 // method required by processor (conduit) interface

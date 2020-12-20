@@ -75,3 +75,8 @@ const (
     EnvKeyLoggingFormat = "FIRESIDE_LOGGING_FORMAT"
     EnvKeyLoggingLevel  = "FIRESIDE_LOGGING_LEVEL"
 )
+
+// common strings related to concurrency / parallel processing / etc.
+const (
+    DefaultConcurrencyEventTagger int = 1
+)
