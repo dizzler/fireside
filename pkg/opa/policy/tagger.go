@@ -55,9 +55,11 @@ func NewTagger(config *configure.TaggerPolicyConfig, ctx context.Context) *Tagge
 
 // evaluate the PreparedQuery for each query.TaggerQuery;
 // this method must be run after PrepareQueries() method
-func (t *Tagger) EvaluatePreparedQueries(in data.JSON) (out data.JSON, oerr error) {
+func (t *Tagger) EvaluatePreparedQueries(in data.JSON, outputChan chan data.JSON, killChan chan error) {
     log.Trace("running EvaluatePreparedQueries method on Tagger type")
     var (
+        oerr      error
+        out       data.JSON
         tagsError []string
         tagsFalse []string
         tagsTrue  []string
@@ -66,9 +68,9 @@ func (t *Tagger) EvaluatePreparedQueries(in data.JSON) (out data.JSON, oerr erro
     // decode the source JSON prior to evaluating the data with OPA
     dd, err := data.DecodeJSON(in, useNum)
     if err != nil {
-        oerr = err
-        return nil, oerr
+        killChan <- err
     }
+
     // extract the top-level `data` field into a unique JSON object;
     // allows OPA to evaluate the event data, not the event wrapper
     eventData := dd["data"]
@@ -94,7 +96,7 @@ func (t *Tagger) EvaluatePreparedQueries(in data.JSON) (out data.JSON, oerr erro
         field := t.Config.TagsErrorField
         if _, fieldExists := dd[field]; fieldExists {
             oerr = errors.New("cannot insert tags into existing field = " + field)
-            return
+            killChan <- oerr
         }
         // insert the list of tags into specified field
         dd[field] = data.DedupStringSlice(tagsError)
@@ -104,7 +106,7 @@ func (t *Tagger) EvaluatePreparedQueries(in data.JSON) (out data.JSON, oerr erro
         field := t.Config.TagsFalseField
         if _, fieldExists := dd[field]; fieldExists {
             oerr = errors.New("cannot insert tags into existing field = " + field)
-            return
+            killChan <- oerr
         }
         // insert the list of tags into specified field
         dd[field] = data.DedupStringSlice(tagsFalse)
@@ -114,7 +116,7 @@ func (t *Tagger) EvaluatePreparedQueries(in data.JSON) (out data.JSON, oerr erro
         field := t.Config.TagsTrueField
         if _, fieldExists := dd[field]; fieldExists {
             oerr = errors.New("cannot insert tags into existing field = " + field)
-            return
+            killChan <- oerr
         }
         // insert the list of tags into specified field
         dd[field] = data.DedupStringSlice(tagsTrue)
@@ -124,8 +126,13 @@ func (t *Tagger) EvaluatePreparedQueries(in data.JSON) (out data.JSON, oerr erro
     // marshal the enriched event data back to JSON bytes
     out, oerr = json.Marshal(dd)
 
-    // return the current values for output parameters
-    return
+    if oerr != nil {
+        // send errors to the kill channel for the pipeline
+        killChan <- oerr
+    } else {
+        // send the completed JSON document to the output channel
+        outputChan <- out
+    }
 }
 
 // prepares the list of TaggerQueries for evaluation;

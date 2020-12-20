@@ -39,20 +39,9 @@ func NewEventTagger(config *configure.TaggerPolicyConfig) *EventTagger {
 func (et *EventTagger) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
     log.Trace("running ProcessData method for type EventTagger")
 
-    var (
-        dx  data.JSON
-        err error
-    )
-
-    dx, err = et.T.EvaluatePreparedQueries(d)
-
-    if err != nil {
-        // send the error to the kill channel
-        killChan <- err
-    } else {
-        // send the enriched event to the output channel
-        outputChan <- dx
-    }
+    // evaluate all tagger queries for the input document (JSON)
+    // in a separate goroutine
+    go et.T.EvaluatePreparedQueries(d, outputChan, killChan)
 }
 
 // method required by processor (conduit) interface
