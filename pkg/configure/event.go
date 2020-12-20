@@ -71,8 +71,8 @@ func InsertFiresideEventData(eventData []byte, eventWrapper *FiresideEvent) ([]b
     eventJson, err := json.Marshal(event)
     if err != nil { return nil, err }
 
-    // debug logging
-    log.Debug(string(eventJson))
+    // trace logging
+    log.Trace("created FiresideEvent JSON... " + string(eventJson))
 
     return eventJson, nil
 }

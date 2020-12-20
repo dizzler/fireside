@@ -38,14 +38,17 @@ func LoadConfig() (*Config, string) {
     }
 
     // prefer a non-empty environment var, if available, to set logging level
-    var levelStr string = os.Getenv(EnvKeyLoggingLevel)
-    if len(levelStr) == 0 && len(config.Logging.Level) > 0 {
-        // use config value to set logging level
-        levelStr = config.Logging.Level
-    } else {
-        // default to logging at level="info"
-        levelStr = "info"
+    var levelStr string
+    if levelStr = os.Getenv(EnvKeyLoggingLevel); len(levelStr) == 0 {
+        if len(config.Logging.Level) > 0 {
+            // use config value to set logging level
+            levelStr = config.Logging.Level
+        } else {
+            // default to logging at level="info"
+            levelStr = "info"
+        }
     }
+
     // convert/parse the logging level string into an actual log.Level
     level, loaderr := log.ParseLevel(levelStr)
     if loaderr != nil { log.Fatal(loaderr) }

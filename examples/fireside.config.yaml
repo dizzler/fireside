@@ -1,5 +1,7 @@
 logging:
-  level: debug
+  format: 'string'
+  level: 'debug'
+  output: ''
 inputs:
   envoy:
     accesslog:
@@ -47,14 +49,15 @@ policies:
     tagger_policy:
       event_type: 'EventTypeFalcoAlert'
       query_configs:
-        - binding_name: 'multi_match'
+        - binding_name: 'x'
           bundle_path: '/home/ubuntu/Git/forks/fireside/examples/opa/bundles/fireside_events.tar.gz'
           package: 'falco_test'
           query_id: 'falco-test-000001'
-          query_string: 'multi_match'
+          query_string: 'x = data.falco_test.multi_match'
           tags_error: []
           tags_false: []
           tags_true: []
+          trace_query: false
       tags_error_field: ''
       tags_false_field: ''
       tags_true_field: ''

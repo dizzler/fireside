@@ -54,8 +54,8 @@ const (
 // common strings for tagging processed data
 const (
     DefaultTagErrorField = "tag_errors"
-    DefaultTagFalseField = "tag_matches"
-    DefaultTagTrueField  = "tag_misses"
+    DefaultTagFalseField = "tag_misses"
+    DefaultTagTrueField  = "tag_matches"
 )
 
 // common strings for the running "mode"
