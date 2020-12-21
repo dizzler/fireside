@@ -28,27 +28,42 @@ import (
 
 // FsCacheWriter struct provides configuration for a new filesystem cache writer.
 type FsCacheWriter struct {
-    ActiveBuf    *bufio.Writer
-    ActiveFile   *os.File
-    ActivePath   string
-    ArchivePaths []string
-    BaseDir      string
-    FilePrefix   string
-    OutputConfig *configure.OutputConfig
+    ActiveBuf     *bufio.Writer
+    ActiveFile    *os.File
+    ActivePath    string
+    ArchivePaths  []string
+    BaseDir       string
+    FilePrefix    string
+    OutputConfig  *configure.OutputConfig
+    PipelineState *configure.PipelineConfigState
 }
 
 // NewFsCacheWriter returns a new FsCacheWriter wrapping the given io.Writer object
-func NewFsCacheWriter(outdir string, prefix string, outconf *configure.OutputConfig) *FsCacheWriter {
+func NewFsCacheWriter(outdir string, prefix string, outconf *configure.OutputConfig, pipestate *configure.PipelineConfigState) *FsCacheWriter {
     // Initialize the filesystem cache
     p, f, b, err := OpenCacheFile(outdir, prefix)
     if err != nil {
         log.WithError(err).Fatal("error initializing filesystem cache")
     }
     var paths []string
-    cacheWriter := &FsCacheWriter{ActiveBuf: b, ActiveFile: f, ActivePath: p, ArchivePaths: paths, BaseDir: outdir, FilePrefix: prefix, OutputConfig: outconf}
+    cacheWriter := &FsCacheWriter{
+        ActiveBuf: b,
+        ActiveFile: f,
+        ActivePath: p,
+        ArchivePaths: paths,
+        BaseDir: outdir,
+        FilePrefix: prefix,
+        OutputConfig: outconf,
+        PipelineState: pipestate,
+    }
     // Run and manage the filesystem cache in a separate goroutine
     go RunFsCache(cacheWriter)
     return cacheWriter
+}
+
+// controls the maximum number of parallel ProcessData method calls
+func (w *FsCacheWriter) Concurrency() int {
+    return w.PipelineState.DefaultConcurrency
 }
 
 // ProcessData writes the data

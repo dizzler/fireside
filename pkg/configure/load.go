@@ -1,6 +1,7 @@
 package configure
 
 import (
+    "encoding/json"
     "flag"
     "fmt"
     "os"
@@ -55,6 +56,10 @@ func LoadConfig() (*Config, string) {
     // set the logging level
     log.SetLevel(level)
     log.Info("logging FireSide runtime events at (or above) level = " + levelStr)
+
+    // convert the config to JSON and print to stdout
+    configJson, _ := json.MarshalIndent(config, "", "    ")
+    log.Debug("printing config in JSON format... " + string(configJson))
 
     // return the parse config, plus a string for the run mode
     return config, runMode

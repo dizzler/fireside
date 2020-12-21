@@ -5,7 +5,7 @@ import (
     "gopkg.in/yaml.v2"
 )
 
-// Config struct for webapp config
+// data structure for FireSide application configuration
 type Config struct {
 
     // configs related to application audit logging
@@ -45,10 +45,11 @@ type Config struct {
 	Files []InputConfigFileReader `yaml:"files"`
     } `yaml:"inputs"`
 
-    // configs for transformer processors and providers
-    Transformers struct {
-	Enable bool `yaml:"enable"`
-    } `yaml:"transformers"`
+    // configs for data processing pipelines
+    Pipelines struct {
+        Envoy PipelineConfig `yaml:"envoy"`
+        Falco PipelineConfig `yaml:"falco"`
+    } `yaml:"pipelines"`
 
     // configs for output processors and providers
     Outputs struct {

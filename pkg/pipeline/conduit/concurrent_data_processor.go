@@ -47,7 +47,7 @@ type result struct {
 }
 
 func (dp *dataProcessor) processData(d data.JSON, killChan chan error) chan bool {
-    log.Info("dataProcessor: processData ", dp, " with concurrency = ", dp.concurrency)
+    log.Trace("dataProcessor: processData ", dp, " with concurrency = ", dp.concurrency)
     exit := make(chan bool, 1)
     // If no concurrency is needed, simply call stage.ProcessData and return...
     if dp.concurrency <= 1 {

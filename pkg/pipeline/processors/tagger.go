@@ -12,11 +12,13 @@ import (
 
 // EventTagger is a wrapper around *policy.Tagger
 type EventTagger struct {
-    T *policy.Tagger
+    ConcurrentProcs int
+    T               *policy.Tagger
+    PipelineState   *configure.PipelineConfigState
 }
 
 // NewEventTagger instantiates a new EventTagger object
-func NewEventTagger(config *configure.TaggerPolicyConfig) *EventTagger {
+func NewEventTagger(config *configure.TaggerPolicyConfig, pipestate *configure.PipelineConfigState) *EventTagger {
     log.Trace("running NewEventTagger function")
 
     // set the context for the Tagger
@@ -26,8 +28,11 @@ func NewEventTagger(config *configure.TaggerPolicyConfig) *EventTagger {
     t := policy.NewTagger(config, ctx)
 
     // default concurrency to the value of configure.DefaultConcurrencyEventTagger
-    if t.Config.Concurrency == 0 {
-        t.Config.Concurrency = configure.DefaultConcurrencyEventTagger
+    var conc int = configure.DefaultConcurrencyEventTagger
+    if config.Concurrency > 0 {
+        conc = config.Concurrency
+    } else if pipestate.DefaultConcurrency > 0 {
+        conc = pipestate.DefaultConcurrency
     }
 
     // prepare queries for evaluation via Tagger method call
@@ -36,12 +41,16 @@ func NewEventTagger(config *configure.TaggerPolicyConfig) *EventTagger {
     }
 
     // return a pointer to the EventTagger struct
-    return &EventTagger{T: t}
+    return &EventTagger{
+        ConcurrentProcs: conc,
+        T: t,
+        PipelineState: pipestate,
+    }
 }
 
 // implements the Concurrency() method of the ConcurrentDataProcessor interface
 func (et *EventTagger) Concurrency() int {
-    return et.T.Config.Concurrency
+    return et.ConcurrentProcs
 }
 
 // processes data from a given event, adding tags for matches, misses and issues;

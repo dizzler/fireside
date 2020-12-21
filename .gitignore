@@ -3,7 +3,6 @@ fireside
 examples/*.json
 examples/*.local
 go/
-ratchet/
 
 *.o
 *.exe

@@ -16,6 +16,11 @@ var (
 )
 
 func CreateEventsPipelines(config *configure.Config) {
+    CreateEventsPipelineEnvoy(config)
+    CreateEventsPipelineFalco(config)
+}
+
+func CreateEventsPipelineEnvoy(config *configure.Config) {
     // Set the various *Config values used throughout the data processing pipeline
     awsOutputConfig = &configure.AwsOutputConfig{
         Profile: config.Outputs.AWS.Profile,
@@ -42,7 +47,8 @@ func CreateEventsPipelines(config *configure.Config) {
     eventOut1 := processors.NewFsCacheWriter(
         config.Outputs.Cache.Events.Directory,
         configure.CachePrefixEnvoy,
-        outputConfig)
+        outputConfig,
+        &config.Pipelines.Envoy.State)
 
     // Create and validate the pipeline1 Layout
     layout1, layerr1 := conduit.NewPipelineLayout(
@@ -63,15 +69,26 @@ func CreateEventsPipelines(config *configure.Config) {
     // Create a new pipeline using the initialized processors
     pipeline1 := conduit.NewBranchingPipeline(layout1)
 
+    // Run the data processing pipeline and wait for either an error or nil to be returned
+    go func() {
+        err1 := <-pipeline1.Run()
+        if err1 != nil {
+            log.WithError(err1).Fatal("error in data processing pipeline : " + p1)
+        }
+    }()
+}
+
+func CreateEventsPipelineFalco(config *configure.Config) {
     ///////////////////////////////   pipeline2   ///////////////////////////////
     const p2 string = "pipeline2"
     // Initialize the data processors for pipeline2
     eventInFalco2 := processors.NewFileReader(&config.Inputs.Files[0])
-    eventTagger2 := processors.NewEventTagger(&config.Policies[0].TaggerPolicy)
+    eventTagger2 := processors.NewEventTagger(&config.Pipelines.Falco.Policies.EventTagger, &config.Pipelines.Falco.State)
     eventOut2 := processors.NewFsCacheWriter(
         config.Outputs.Cache.Events.Directory,
         configure.CachePrefixFalco,
-        outputConfig)
+        outputConfig,
+        &config.Pipelines.Falco.State)
 
     // Create and validate the pipeline2 Layout
     layout2, layerr2 := conduit.NewPipelineLayout(
@@ -92,13 +109,7 @@ func CreateEventsPipelines(config *configure.Config) {
     // Create a new pipeline using the initialized processors
     pipeline2 := conduit.NewBranchingPipeline(layout2)
 
-    // Run the data processing pipelines and wait for either an error or nil to be returned
-    go func() {
-        err1 := <-pipeline1.Run()
-        if err1 != nil {
-            log.WithError(err1).Fatal("error in data processing pipeline : " + p1)
-        }
-    }()
+    // Run the data processing pipeline and wait for either an error or nil to be returned
     go func() {
         err2 := <-pipeline2.Run()
         if err2 != nil {

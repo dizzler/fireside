@@ -26,8 +26,49 @@ inputs:
         id: ''
         path: '/var/log/falco/events.txt'
         type: 'file'
-transformers:
-  enabled: false
+pipelines:
+  envoy:
+    state:
+      enable: true
+      default_concurrency: 1
+    policies:
+      event_tagger:
+        concurrency: 10
+        event_type: 'EventTypeEnvoyAccesslog'
+        query_configs:
+          - binding_name: 'x'
+            bundle_path: '/home/ubuntu/Git/forks/fireside/examples/opa/bundles/envoy.tar.gz'
+            package: 'envoy_test'
+            query_id: 'envoy-test-000001'
+            query_string: 'x = data.envoy_test.multi_match'
+            tags_error: []
+            tags_false: []
+            tags_true: []
+            trace_query: false
+        tags_error_field: ''
+        tags_false_field: ''
+        tags_true_field: ''
+  falco:
+    state:
+      enable: true
+      default_concurrency: 1
+    policies:
+      event_tagger:
+        concurrency: 10
+        event_type: 'EventTypeFalcoAlert'
+        query_configs:
+          - binding_name: 'x'
+            bundle_path: '/home/ubuntu/Git/forks/fireside/examples/opa/bundles/fireside_events.tar.gz'
+            package: 'falco_test'
+            query_id: 'falco-test-000001'
+            query_string: 'x = data.falco_test.multi_match'
+            tags_error: []
+            tags_false: []
+            tags_true: []
+            trace_query: false
+        tags_error_field: ''
+        tags_false_field: ''
+        tags_true_field: ''
 outputs:
   aws:
     access_key_id: ''
@@ -42,26 +83,6 @@ outputs:
       directory: '/tmp/fireside/cache'
       prefix: 'fireside-event-cache'
 policies:
-  - id: 'fs-envoy-def-001'
-    type: 'event_tagger'
-    priority: 1
-    filters: []
-    tagger_policy:
-      concurrency: 10
-      event_type: 'EventTypeFalcoAlert'
-      query_configs:
-        - binding_name: 'x'
-          bundle_path: '/home/ubuntu/Git/forks/fireside/examples/opa/bundles/fireside_events.tar.gz'
-          package: 'falco_test'
-          query_id: 'falco-test-000001'
-          query_string: 'x = data.falco_test.multi_match'
-          tags_error: []
-          tags_false: []
-          tags_true: []
-          trace_query: false
-      tags_error_field: ''
-      tags_false_field: ''
-      tags_true_field: ''
   - id: 'fs-envoy-def-001'
     type: 'envoy_proxy_definition'
     priority: 1

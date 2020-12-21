@@ -17,10 +17,6 @@ type Policy struct {
     // configs for policies to apply to Envoy proxies in order to
     // provision dynamic resources via Envoy xDS APIs
     EnvoyPolicy  EnvoyPolicyConfig  `yaml:"envoy_policy"`
-
-    // configs for data processing policies that use OPA queries
-    // to drive tagging decisions
-    TaggerPolicy TaggerPolicyConfig `yaml:"tagger_policy"`
 }
 
 type PolicyFilter struct {
