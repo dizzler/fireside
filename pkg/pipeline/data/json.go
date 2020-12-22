@@ -24,7 +24,27 @@ func NewJSON(v interface{}) (JSON, error) {
 
 // decodes JSON []bytes into a go interface{}; includes the option of decoding
 // numbers as json.Number (required for OPA processing of JSON)
-func DecodeJSON(dataBytes JSON, useNumber bool) (i map[string]interface{}, e error) {
+func DecodeJsonAsInterface(dataBytes JSON, useNumber bool) (i interface{}, e error) {
+    dec := json.NewDecoder(bytes.NewReader(dataBytes))
+
+    // OPA evaluation of input data requires that
+    // numeric values must be represented as json.Number
+    if useNumber {
+        dec.UseNumber()
+    }
+
+    // decode source JSON into map[string]interface{}
+    e = dec.Decode(&i)
+
+    // return the current values for i and e
+    return
+}
+
+// decodes JSON []bytes into a map[string]interface{}; includes the option of decoding
+// numbers as json.Number (required for OPA processing of JSON); useful for returning
+// the event wrapper as a map of string keys, where a given (e.g. "data") field may
+// be referenced by name and extracted as a go interface{} (for OPA query eval).
+func DecodeJsonAsMap(dataBytes JSON, useNumber bool) (i map[string]interface{}, e error) {
     dec := json.NewDecoder(bytes.NewReader(dataBytes))
 
     // OPA evaluation of input data requires that

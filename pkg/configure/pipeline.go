@@ -13,7 +13,7 @@ type PipelineConfig struct {
 type PipelineConfigPolicies struct {
     // configs for data processing policies that use OPA queries
     // to drive tagging decisions
-    EventTagger TaggerPolicyConfig  `yaml:"tagger_policy"`
+    EventTagger QueryStreamPolicyConfig  `yaml:"event_tagger"`
 }
 
 type PipelineConfigState struct {

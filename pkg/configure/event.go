@@ -67,7 +67,7 @@ func InsertFiresideEventData(eventData []byte, eventWrapper *FiresideEvent) ([]b
     if merr != nil { return nil, merr }
 
     // insert the source event data into the event wrapper
-    event["data"] = dataMap
+    event[EventDataField] = dataMap
     eventJson, err := json.Marshal(event)
     if err != nil { return nil, err }
 

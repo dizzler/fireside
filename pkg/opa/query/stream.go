@@ -15,9 +15,9 @@ import (
     "github.com/open-policy-agent/opa/topdown"
 )
 
-type TaggerQuery struct {
-    // configuration for the instantiated TaggerQuery object
-    Config        *configure.TaggerQueryConfig
+type QueryStream struct {
+    // configuration for the instantiated QueryStream object
+    Config        *configure.QueryStreamConfig
 
     // PreparedQuery is set when PrepareQuery() method is invoked
     PreparedQuery rego.PreparedEvalQuery
@@ -26,18 +26,18 @@ type TaggerQuery struct {
     Store         storage.Store
 }
 
-// creates a new TaggerQuery from config and provides a wrapper for a PreparedQuery
-func NewTaggerQuery(config *configure.TaggerQueryConfig) *TaggerQuery {
-    log.Trace("running NewTaggerQuery function")
-    // return a pointer to a TaggerQuery struct
-    return &TaggerQuery{
+// creates a new QueryStream from config and provides a wrapper for a PreparedQuery
+func NewQueryStream(config *configure.QueryStreamConfig) *QueryStream {
+    log.Trace("running NewQueryStream function")
+    // return a pointer to a QueryStream struct
+    return &QueryStream{
         Config: config,
     }
 }
 
 // prepares an OPA query for performant eval at a later stage
-func (tq *TaggerQuery) PrepareQuery(ctx context.Context) error {
-    log.Trace("running PrepareQuery method on type TaggerQuery")
+func (tq *QueryStream) PrepareQuery(ctx context.Context) error {
+    log.Trace("running PrepareQuery method on type QueryStream")
 
     // create the empty storage.Store layer in memory
     tq.Store = inmem.New()
@@ -71,13 +71,13 @@ func (tq *TaggerQuery) PrepareQuery(ctx context.Context) error {
 }
 
 // evaluates the prepared query
-func (tq *TaggerQuery) PreparedQueryEval(input interface{}) (tagsE []string, tagsF []string, tagsT []string) {
-    log.Trace("running PreparedQueryEval method on type TaggerQuery")
+func (tq *QueryStream) PreparedQueryEval(input interface{}) (tagsE []string, tagsF []string, tagsT []string) {
+    log.Trace("running PreparedQueryEval method on type QueryStream")
 
     // append the QueryID to each list of possible tags
-    tagsError := append(tq.Config.TagsError, tq.Config.QueryID)
-    tagsFalse := append(tq.Config.TagsFalse, tq.Config.QueryID)
-    tagsTrue := append(tq.Config.TagsTrue, tq.Config.QueryID)
+    tagsIssue := append(tq.Config.TagsIssue, tq.Config.QueryID)
+    tagsMatch := append(tq.Config.TagsMatch, tq.Config.QueryID)
+    tagsMiss  := append(tq.Config.TagsMiss, tq.Config.QueryID)
 
     // set the context for query eval
     ctx := context.Background()
@@ -116,7 +116,7 @@ func (tq *TaggerQuery) PreparedQueryEval(input interface{}) (tagsE []string, tag
     results, err := tq.PreparedQuery.Eval(ctx, options...)
     if err != nil {
         log.WithError(err).Error("rego (OPA) query returned error : " + tq.Config.QueryString)
-        tagsE = tagsError
+        tagsE = tagsIssue
         return
     } else {
         // if tracing is enabled, pretty print the query trace
@@ -129,11 +129,11 @@ func (tq *TaggerQuery) PreparedQueryEval(input interface{}) (tagsE []string, tag
 
         if len(results) == 0 {
             log.Error("rego (OPA) query returned undefined result for query:  " + tq.Config.QueryString)
-            tagsE = tagsError
+            tagsE = tagsIssue
             return
         } else if len(results) > 1 {
             log.WithError(err).Warning("rego (OPA) query returned more results than expected ; processing first query result ONLY : " + tq.Config.QueryString)
-            tagsE = tagsError
+            tagsE = tagsIssue
         } else {
             log.Trace("rego (OPA) query returned one result to process")
         }
@@ -147,15 +147,15 @@ func (tq *TaggerQuery) PreparedQueryEval(input interface{}) (tagsE []string, tag
 
         // set tags based on true||false value of binding var
         if result {
-            tagsT = tagsTrue
+            tagsT = tagsMatch
             log.Debugf("found a match for target result : %s = %t", tq.Config.BindingName, result)
         } else {
-            tagsF = tagsFalse
+            tagsF = tagsMiss
             log.Debugf("no match; binding %s = %t", tq.Config.BindingName, result)
         }
     } else {
         log.WithError(err).Warning("unexpected (non-bool) type returned from rego (OPA) query : " + tq.Config.QueryString)
-        tagsE = tagsError
+        tagsE = tagsIssue
     }
 
     return

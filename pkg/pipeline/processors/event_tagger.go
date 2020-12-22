@@ -10,22 +10,22 @@ import (
     log "github.com/sirupsen/logrus"
 )
 
-// EventTagger is a wrapper around *policy.Tagger
+// EventTagger is a wrapper around *policy.QueryStream
 type EventTagger struct {
     ConcurrentProcs int
-    T               *policy.Tagger
     PipelineState   *configure.PipelineConfigState
+    QS              *policy.QueryStream
 }
 
 // NewEventTagger instantiates a new EventTagger object
-func NewEventTagger(config *configure.TaggerPolicyConfig, pipestate *configure.PipelineConfigState) *EventTagger {
+func NewEventTagger(config *configure.QueryStreamPolicyConfig, pipestate *configure.PipelineConfigState) *EventTagger {
     log.Trace("running NewEventTagger function")
 
-    // set the context for the Tagger
+    // set the context for the QueryStream
     ctx := context.Background()
 
-    // create the new Tagger object
-    t := policy.NewTagger(config, ctx)
+    // create the new QueryStream object
+    qs := policy.NewQueryStream(config, ctx)
 
     // default concurrency to the value of configure.DefaultConcurrencyEventTagger
     var conc int = configure.DefaultConcurrencyEventTagger
@@ -35,16 +35,16 @@ func NewEventTagger(config *configure.TaggerPolicyConfig, pipestate *configure.P
         conc = pipestate.DefaultConcurrency
     }
 
-    // prepare queries for evaluation via Tagger method call
-    if err := t.PrepareQueries(); err != nil {
-        log.WithError(err).Fatal("failed to PrepareQueries for type *Tagger")
+    // prepare queries for evaluation via QueryStream method call
+    if err := qs.PrepareQueries(); err != nil {
+        log.WithError(err).Fatal("failed to PrepareQueries for type *QueryStream")
     }
 
     // return a pointer to the EventTagger struct
     return &EventTagger{
         ConcurrentProcs: conc,
-        T: t,
         PipelineState: pipestate,
+        QS: qs,
     }
 }
 
@@ -58,8 +58,8 @@ func (et *EventTagger) Concurrency() int {
 func (et *EventTagger) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
     log.Trace("running ProcessData method for type EventTagger")
 
-    // evaluate all tagger queries for the input document (JSON)
-    et.T.EvaluatePreparedQueries(d, outputChan, killChan)
+    // evaluate the stream of (all) queries for the input document (JSON)
+    et.QS.EvaluatePreparedQueries(d, configure.EventDataField, outputChan, killChan)
 }
 
 // method required by processor (conduit) interface

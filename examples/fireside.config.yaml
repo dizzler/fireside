@@ -30,7 +30,7 @@ pipelines:
   envoy:
     state:
       enable: true
-      default_concurrency: 1
+      default_concurrency: 2
     policies:
       event_tagger:
         concurrency: 10
@@ -41,13 +41,13 @@ pipelines:
             package: 'envoy_test'
             query_id: 'envoy-test-000001'
             query_string: 'x = data.envoy_test.multi_match'
-            tags_error: []
-            tags_false: []
-            tags_true: []
+            tags_issue: []
+            tags_match: []
+            tags_miss: []
             trace_query: false
-        tags_error_field: ''
-        tags_false_field: ''
-        tags_true_field: ''
+        tags_issue_field: ''
+        tags_match_field: ''
+        tags_miss_field: ''
   falco:
     state:
       enable: true
@@ -62,13 +62,13 @@ pipelines:
             package: 'falco_test'
             query_id: 'falco-test-000001'
             query_string: 'x = data.falco_test.multi_match'
-            tags_error: []
-            tags_false: []
-            tags_true: []
+            tags_issue: []
+            tags_match: []
+            tags_miss: []
             trace_query: false
-        tags_error_field: ''
-        tags_false_field: ''
-        tags_true_field: ''
+        tags_issue_field: ''
+        tags_match_field: ''
+        tags_miss_field: ''
 outputs:
   aws:
     access_key_id: ''

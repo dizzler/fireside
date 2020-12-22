@@ -39,6 +39,7 @@ const (
     EventCategorySysAudit   = "sys_audit"
     EventCategoryHttp       = "proxy_http"
     EventCategoryTcp        = "proxy_tcp"
+    EventDataField          = "data"
     EventSrcGrpc            = "envoy_grpc"
     EventTypeEnvoyAccesslog = "envoy_accesslog"
     EventTypeFalcoAlert     = "falco_alert"
@@ -53,9 +54,9 @@ const (
 
 // common strings for tagging processed data
 const (
-    DefaultTagErrorField = "tag_errors"
-    DefaultTagFalseField = "tag_misses"
-    DefaultTagTrueField  = "tag_matches"
+    DefaultTagIssueField = "tag_errors"
+    DefaultTagMissField  = "tag_misses"
+    DefaultTagMatchField = "tag_matches"
 )
 
 // common strings for the running "mode"
@@ -78,5 +79,6 @@ const (
 
 // common strings related to concurrency / parallel processing / etc.
 const (
-    DefaultConcurrencyEventTagger int = 1
+    DefaultConcurrencyEventTagger  int = 1
+    DefaultConcurrencyAlertWatcher int = 1
 )
